@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>小兽的生日大冒险</title>
+  <link rel="stylesheet" href="./styles.css?v=20260206c" />
+</head>
+<body>
+  <div id="app">
+    <section id="landing" class="screen landing">
+      <div class="landing-card">
+        <h1>小兽的生日大冒险</h1>
+        <div class="landing-actions">
+          <button class="btn primary" id="start-btn">开始游戏</button>
+          <button class="btn ghost" id="options-btn">设置</button>
+        </div>
+        <div id="options" class="options hidden">
+          <label class="option">
+            <input type="checkbox" id="toggle-coffee" />
+            咖啡头形态
+          </label>
+          <label class="option">
+            音量
+            <input type="range" id="volume" min="0" max="1" step="0.05" value="0.6" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section id="game" class="screen game hidden">
+      <div id="game-wrap">
+        <div id="game-canvas"></div>
+        <button id="hint-btn" class="hint-btn" aria-label="按键提示">?</button>
+      </div>
+      <div id="pause" class="pause hidden">
+        <div class="pause-card">
+          <h2>暂停</h2>
+          <div class="pause-row">
+            <label class="option">
+              <input type="checkbox" id="coffee-in-game" />
+              咖啡头形态
+            </label>
+          </div>
+          <button class="btn primary" id="resume-btn">继续</button>
+        </div>
+      </div>
+      <div id="hint" class="hint hidden">
+        <div class="hint-card">
+          <p>移动：左右方向键 / A D</p>
+          <p>跳跃：空格</p>
+          <p>暂停：ESC</p>
+          <p>最终幕互动：靠近礼物后按空格</p>
+          <button class="btn ghost" id="close-hint">关闭</button>
+        </div>
+      </div>
+      <div id="ending" class="ending hidden">
+        <div class="ending-card">
+          <h2>生日任务完成</h2>
+          <p>小兽已切换为咖啡头形态，庆祝达成。</p>
+          <div class="landing-actions">
+            <button class="btn primary" id="restart-btn">再玩一次</button>
+            <button class="btn ghost" id="home-btn">返回首页</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./vendor/phaser.min.js?v=20260206c"></script>
+  <script src="./constants.js?v=20260206c"></script>
+  <script src="./main.js?v=20260206c"></script>
+</body>
+</html>

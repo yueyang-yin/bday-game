@@ -1,0 +1,34 @@
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+
+# Test artifacts
+test-results/
+coverage/
+
+# Local temp files
+tmp/
+*.log
+
+# Local tool metadata
+.codex/
+
+# Generated/intermediate outputs
+output/
+
+# Local scratch files
+B4_classmate_sitting.png

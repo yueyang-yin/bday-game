@@ -1,0 +1,45 @@
+(() => {
+  const BASE_WIDTH = 800;
+  const BASE_HEIGHT = 450;
+
+  const WORLD_SCALE = {
+    PLAYER_TARGET_HEIGHT_PX: 72,
+    NPC_TARGET_HEIGHT_PX: 78,
+    PROJECTILE_TARGET_PX: 28,
+    INTERACTABLE_TARGET_PX: 48,
+    BADGE_UI_TARGET_PX: 120,
+  };
+
+  const MOVEMENT = {
+    WORLD_GRAVITY_Y: 1250,
+    FLOOR_Y: 392,
+    PLAYER_SPEED_X: 190,
+    JUMP_VELOCITY: -460,
+  };
+
+  const COMBAT = {
+    THROW_INTERVAL_MIN_MS: 1200,
+    THROW_INTERVAL_MAX_MS: 1900,
+    PROJECTILE_SPEED_X_MIN: 220,
+    PROJECTILE_SPEED_X_MAX: 300,
+    PROJECTILE_TTL_MS: 3000,
+    WITCH_PATROL_MIN_X: 520,
+    WITCH_PATROL_MAX_X: 720,
+    WITCH_PATROL_SPEED: 78,
+  };
+
+  const SPRITE_IDS = {
+    PLAYER: "player-main",
+    BLACKBOY: "npc-blackboy",
+    WITCH: "npc-witch",
+  };
+
+  window.__BDG_CONSTANTS = {
+    BASE_WIDTH,
+    BASE_HEIGHT,
+    WORLD_SCALE,
+    MOVEMENT,
+    COMBAT,
+    SPRITE_IDS,
+  };
+})();
