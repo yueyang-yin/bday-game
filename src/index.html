@@ -7,28 +7,14 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>小兽的生日大冒险</title>
-  <link rel="stylesheet" href="./styles.css?v=20260206c" />
+  <link rel="stylesheet" href="./styles.css?v=20260211p" />
 </head>
 <body>
   <div id="app">
     <section id="landing" class="screen landing">
-      <div class="landing-card">
-        <h1>小兽的生日大冒险</h1>
-        <div class="landing-actions">
-          <button class="btn primary" id="start-btn">开始游戏</button>
-          <button class="btn ghost" id="options-btn">设置</button>
-        </div>
-        <div id="options" class="options hidden">
-          <label class="option">
-            <input type="checkbox" id="toggle-coffee" />
-            咖啡头形态
-          </label>
-          <label class="option">
-            音量
-            <input type="range" id="volume" min="0" max="1" step="0.05" value="0.6" />
-          </label>
-        </div>
-      </div>
+      <button id="start-btn" class="alien-start-btn" aria-label="开始游戏">
+        <img src="../assets/ui/alien_play_button.png" alt="开始游戏" />
+      </button>
     </section>
 
     <section id="game" class="screen game hidden">
@@ -39,12 +25,6 @@
       <div id="pause" class="pause hidden">
         <div class="pause-card">
           <h2>暂停</h2>
-          <div class="pause-row">
-            <label class="option">
-              <input type="checkbox" id="coffee-in-game" />
-              咖啡头形态
-            </label>
-          </div>
           <button class="btn primary" id="resume-btn">继续</button>
         </div>
       </div>
@@ -58,20 +38,22 @@
         </div>
       </div>
       <div id="ending" class="ending hidden">
-        <div class="ending-card">
-          <h2>生日任务完成</h2>
-          <p>小兽已切换为咖啡头形态，庆祝达成。</p>
-          <div class="landing-actions">
-            <button class="btn primary" id="restart-btn">再玩一次</button>
-            <button class="btn ghost" id="home-btn">返回首页</button>
-          </div>
+        <div class="ending-card ending-card--alien">
+          <img
+            class="ending-bg-image"
+            src="../assets/scenes/ending_bg_chatgpt_room.png"
+            alt="结束页背景"
+          />
+          <button id="home-btn" class="alien-home-btn" aria-label="回到首页">
+            <img src="../assets/ui/alien_home_button.png" alt="回到首页" />
+          </button>
         </div>
       </div>
     </section>
   </div>
 
-  <script src="./vendor/phaser.min.js?v=20260206c"></script>
-  <script src="./constants.js?v=20260206c"></script>
-  <script src="./main.js?v=20260206c"></script>
+  <script src="./vendor/phaser.min.js?v=20260211p"></script>
+  <script src="./constants.js?v=20260211p"></script>
+  <script src="./main.js?v=20260211p"></script>
 </body>
 </html>

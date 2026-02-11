@@ -2,21 +2,15 @@
   const landing = document.getElementById("landing");
   const gameScreen = document.getElementById("game");
   const startBtn = document.getElementById("start-btn");
-  const optionsBtn = document.getElementById("options-btn");
-  const optionsPanel = document.getElementById("options");
-  const toggleCoffee = document.getElementById("toggle-coffee");
-  const volumeSlider = document.getElementById("volume");
 
   const pauseOverlay = document.getElementById("pause");
   const resumeBtn = document.getElementById("resume-btn");
-  const coffeeInGame = document.getElementById("coffee-in-game");
 
   const hintBtn = document.getElementById("hint-btn");
   const hint = document.getElementById("hint");
   const closeHint = document.getElementById("close-hint");
 
   const ending = document.getElementById("ending");
-  const restartBtn = document.getElementById("restart-btn");
   const homeBtn = document.getElementById("home-btn");
 
   const constants = window.__BDG_CONSTANTS || {};
@@ -64,8 +58,10 @@
   const sceneKeys = ["bg1", "bg2", "bg3", "bg4", "bg5", "bg6"];
 
   function syncCoffeeToggles() {
-    toggleCoffee.checked = state.coffee;
-    coffeeInGame.checked = state.coffee;
+    const toggleCoffee = document.getElementById("toggle-coffee");
+    const coffeeInGame = document.getElementById("coffee-in-game");
+    if (toggleCoffee) toggleCoffee.checked = state.coffee;
+    if (coffeeInGame) coffeeInGame.checked = state.coffee;
   }
 
   function hideEnding() {
@@ -85,74 +81,53 @@
     if (scene) action(scene);
   }
 
-  optionsBtn.addEventListener("click", () => {
-    optionsPanel.classList.toggle("hidden");
-  });
+  if (hintBtn && hint) {
+    hintBtn.addEventListener("click", () => {
+      hint.classList.remove("hidden");
+    });
+  }
 
-  toggleCoffee.addEventListener("change", (e) => {
-    state.coffee = e.target.checked;
-    syncCoffeeToggles();
-    withScene((scene) => scene.setPlayerTexture(state.coffee ? "coffee" : "player"));
-  });
+  if (closeHint && hint) {
+    closeHint.addEventListener("click", () => {
+      hint.classList.add("hidden");
+    });
+  }
 
-  volumeSlider.addEventListener("input", (e) => {
-    state.volume = Number(e.target.value);
-    if (gameInstance) {
-      gameInstance.sound.volume = state.volume;
-    }
-  });
+  if (resumeBtn) {
+    resumeBtn.addEventListener("click", () => {
+      togglePause(false);
+    });
+  }
 
-  hintBtn.addEventListener("click", () => {
-    hint.classList.remove("hidden");
-  });
+  if (homeBtn && gameScreen && landing) {
+    homeBtn.addEventListener("click", () => {
+      hideEnding();
+      state.paused = false;
+      gameScreen.classList.add("hidden");
+      landing.classList.remove("hidden");
+      withScene((scene) => scene.scene.pause());
+    });
+  }
 
-  closeHint.addEventListener("click", () => {
-    hint.classList.add("hidden");
-  });
+  if (startBtn && landing && gameScreen) {
+    startBtn.addEventListener("click", () => {
+      if (!window.Phaser) {
+        alert("Phaser 加载失败，请刷新页面重试。");
+        return;
+      }
 
-  resumeBtn.addEventListener("click", () => {
-    togglePause(false);
-  });
+      hideEnding();
+      landing.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
 
-  coffeeInGame.addEventListener("change", (e) => {
-    state.coffee = e.target.checked;
-    syncCoffeeToggles();
-    withScene((scene) => scene.setPlayerTexture(state.coffee ? "coffee" : "player"));
-  });
-
-  restartBtn.addEventListener("click", () => {
-    hideEnding();
-    state.scene = "bg1";
-    state.coffee = false;
-    syncCoffeeToggles();
-    withScene((scene) => scene.restartRun());
-  });
-
-  homeBtn.addEventListener("click", () => {
-    hideEnding();
-    state.paused = false;
-    gameScreen.classList.add("hidden");
-    landing.classList.remove("hidden");
-    withScene((scene) => scene.scene.pause());
-  });
-
-  startBtn.addEventListener("click", () => {
-    if (!window.Phaser) {
-      alert("Phaser 加载失败，请刷新页面重试。");
-      return;
-    }
-
-    hideEnding();
-    landing.classList.add("hidden");
-    gameScreen.classList.remove("hidden");
-
-    if (!gameInstance) {
-      gameInstance = createGame();
-      window.__xiaoshouGame = gameInstance;
-    } else {
-      withScene((scene) => scene.restartRun());
-    }
-  });
+      if (!gameInstance) {
+        gameInstance = createGame();
+        window.__xiaoshouGame = gameInstance;
+      } else {
+        withScene((scene) => scene.restartRun());
+      }
+    });
+  }
 
   function togglePause(force) {
     if (!state.started || state.ended) return;
@@ -201,6 +176,7 @@
         this.groundY = MOVEMENT.FLOOR_Y;
         this.awaitingFinalExit = false;
         this.frameVisibleSizeCache = {};
+        this.isCoffeeForm = false;
       }
 
       preload() {
@@ -219,6 +195,8 @@
           frameWidth: 32,
           frameHeight: 48,
         });
+        this.load.image("player-jump", "../assets/characters/player_jump_32x48.png");
+        this.load.image("coffee-jump", "../assets/characters/coffee_jump_32x48.png");
         this.load.spritesheet("blackboy-throw", "../assets/characters/B4_classmate_sitting_aligned_32x48.png", {
           frameWidth: 32,
           frameHeight: 48,
@@ -266,6 +244,7 @@
 
         this.applyScaleByVisibleHeight(this.player, state.coffee ? "coffee" : "player", WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX);
         this.configureActorBody(this.player);
+        this.isCoffeeForm = state.coffee;
 
         this.gift = this.add.sprite(620, this.groundY, "gift", 0).setDepth(6).setVisible(false);
         this.applyScaleByHeight(this.gift, WORLD_SCALE.INTERACTABLE_TARGET_PX);
@@ -329,6 +308,7 @@
         this.sceneIndex = 0;
         state.scene = sceneKeys[0];
         this.awaitingFinalExit = false;
+        this.isCoffeeForm = state.coffee;
 
         this.setPlayerTexture(state.coffee ? "coffee" : "player");
         this.player.setPosition(120, this.groundY);
@@ -345,9 +325,13 @@
 
       setPlayerTexture(key) {
         if (!this.player) return;
+        if (key === "player" || key === "coffee") {
+          this.isCoffeeForm = key === "coffee";
+        }
         const facingLeft = this.player.flipX;
         this.player.setTexture(key, 0);
-        this.applyScaleByVisibleHeight(this.player, key, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX);
+        const baseFrame = this.textures.exists(key) ? "__BASE" : 0;
+        this.applyScaleByVisibleHeight(this.player, key, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, baseFrame);
         this.configureActorBody(this.player);
         this.player.setFlipX(facingLeft);
       }
@@ -545,7 +529,7 @@
             .setName(SPRITE_IDS.WITCH)
             .setOrigin(0.5, 1)
             .setDepth(4);
-          this.applyScaleByVisibleHeight(this.npc, "witch", WORLD_SCALE.NPC_TARGET_HEIGHT_PX + 6, 0);
+          this.applyScaleByVisibleHeight(this.npc, "witch", WORLD_SCALE.NPC_TARGET_HEIGHT_PX + 6, 4);
           this.matchDisplayHeight(this.npc, this.player.displayHeight * 1.05);
           this.npc.anims.play("witch-run", true);
           this.npc.setData("vx", -COMBAT.WITCH_PATROL_SPEED);
@@ -643,7 +627,7 @@
 
         const speed = Phaser.Math.Between(COMBAT.PROJECTILE_SPEED_X_MIN, COMBAT.PROJECTILE_SPEED_X_MAX);
         const frame = 1;
-        const y = this.groundY - this.player.displayHeight * 0.5;
+        const y = this.player.y - this.player.displayHeight * 0.5;
         this.spawnProjectile(
           "obstacles",
           frame,
@@ -660,7 +644,7 @@
         this.giftOpened = false;
         this.giftLanded = false;
         this.gift.setVisible(true);
-        this.gift.setFrame(0);
+        this.gift.setFrame(1);
         this.gift.setPosition(620, -80);
 
         this.tweens.add({
@@ -681,7 +665,7 @@
         if (dist > 90) return false;
 
         this.giftOpened = true;
-        this.gift.setFrame(4);
+        this.gift.setFrame(2);
         state.coffee = true;
         syncCoffeeToggles();
         this.setPlayerTexture("coffee");
@@ -696,7 +680,7 @@
           this.popup = null;
         }
 
-        const badgeBaseScale = this.applyScaleBySize("badge", WORLD_SCALE.BADGE_UI_TARGET_PX);
+        const badgeBaseScale = this.applyScaleBySize("badge", WORLD_SCALE.BADGE_UI_TARGET_PX * 1.45);
         this.popup = this.add.image(x, y, "badge").setDepth(10).setAlpha(1).setScale(badgeBaseScale * 0.2);
 
         this.tweens.add({
@@ -730,6 +714,7 @@
         let vx = this.npc.getData("vx") || -speed;
 
         this.npc.x += (vx * delta) / 1000;
+        this.npc.y = this.groundY;
 
         if (this.npc.x <= COMBAT.WITCH_PATROL_MIN_X) {
           vx = speed;
@@ -800,6 +785,10 @@
         }
 
         if (this.player.x > BASE_WIDTH - 36) {
+          if (this.sceneIndex === 5 && this.giftOpened && this.awaitingFinalExit) {
+            this.finishGame();
+            return;
+          }
           if (this.sceneIndex < sceneKeys.length - 1) {
             this.sceneIndex += 1;
             this.enterScene(this.sceneIndex);
@@ -811,17 +800,25 @@
         }
 
         if (this.player.x < 24) {
-          if (this.sceneIndex === 5 && this.giftOpened && this.awaitingFinalExit) {
-            this.finishGame();
-            return;
-          }
           this.player.setX(24);
         }
 
         const prefix = this.player.texture.key === "coffee" ? "coffee" : "player";
-        if (left || right) {
+        if (!grounded) {
+          const jumpKey = this.isCoffeeForm ? "coffee-jump" : "player-jump";
+          this.player.setTexture(jumpKey);
+          this.applyScaleByVisibleHeight(this.player, jumpKey, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, "__BASE");
+          this.configureActorBody(this.player);
+        } else if (this.player.texture.key === "player-jump" || this.player.texture.key === "coffee-jump") {
+          const baseKey = this.isCoffeeForm ? "coffee" : "player";
+          this.player.setTexture(baseKey, 0);
+          this.applyScaleByVisibleHeight(this.player, baseKey, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, 0);
+          this.configureActorBody(this.player);
+        }
+
+        if (grounded && (left || right)) {
           this.player.anims.play(`${prefix}-run-side`, true);
-        } else {
+        } else if (grounded) {
           this.player.anims.stop();
           this.player.setFrame(0);
         }
