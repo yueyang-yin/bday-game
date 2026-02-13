@@ -35,9 +35,10 @@
     PROJECTILE_SPEED_X_MIN: 220,
     PROJECTILE_SPEED_X_MAX: 300,
     PROJECTILE_TTL_MS: 3000,
-    WITCH_PATROL_MIN_X: 520,
-    WITCH_PATROL_MAX_X: 720,
-    WITCH_PATROL_SPEED: 78,
+    WITCH_COUNT: 3,
+    WITCH_SPAWN_GAP: 180,
+    WITCH_SPAWN_INTERVAL_MS: 700,
+    WITCH_RUN_SPEED: 92,
   };
   const SPRITE_IDS = constants.SPRITE_IDS || {
     PLAYER: "player-main",
@@ -56,6 +57,13 @@
     volume: 0.6,
   };
   const sceneKeys = ["bg1", "bg2", "bg3", "bg4", "bg5", "bg6"];
+  const FINAL_TRANSFORM_ITALIAN_LINE = "Ballerina Cappuccina";
+
+  function resetRunStateToDefaultGirl() {
+    state.coffee = false;
+    state.scene = sceneKeys[0];
+    syncCoffeeToggles();
+  }
 
   function syncCoffeeToggles() {
     const toggleCoffee = document.getElementById("toggle-coffee");
@@ -102,6 +110,7 @@
   if (homeBtn && gameScreen && landing) {
     homeBtn.addEventListener("click", () => {
       hideEnding();
+      resetRunStateToDefaultGirl();
       state.paused = false;
       gameScreen.classList.add("hidden");
       landing.classList.remove("hidden");
@@ -117,6 +126,7 @@
       }
 
       hideEnding();
+      resetRunStateToDefaultGirl();
       landing.classList.add("hidden");
       gameScreen.classList.remove("hidden");
 
@@ -168,6 +178,10 @@
         this.giftLanded = false;
         this.hazards = null;
         this.npc = null;
+        this.witches = [];
+        this.nextWitchThrowIndex = 0;
+        this.witchLaneY = null;
+        this.witchSpawnTimers = [];
         this.popup = null;
         this.sceneIndex = 0;
         this.invuln = 0;
@@ -177,6 +191,48 @@
         this.awaitingFinalExit = false;
         this.frameVisibleSizeCache = {};
         this.isCoffeeForm = false;
+        this.jumpBubble = null;
+        this.jumpBubbleText = null;
+        this.jumpBubbleVisible = false;
+        this.jumpBubbleSeenAirborne = false;
+      }
+
+      speakFinalTransformNarration() {
+        if (!("speechSynthesis" in window) || typeof window.SpeechSynthesisUtterance !== "function") {
+          return;
+        }
+
+        const utterance = new window.SpeechSynthesisUtterance(FINAL_TRANSFORM_ITALIAN_LINE);
+        utterance.lang = "it-IT";
+        utterance.rate = 0.8;
+        utterance.pitch = 0.78;
+        utterance.volume = 1;
+
+        const voices = window.speechSynthesis.getVoices();
+        const italianVoices = voices.filter((voice) => (voice.lang || "").toLowerCase().startsWith("it"));
+        const maleNameHints = [
+          "male",
+          "man",
+          "uomo",
+          "luca",
+          "marco",
+          "giorgio",
+          "diego",
+          "federico",
+          "alessandro",
+        ];
+        const maleItalianVoice = italianVoices.find((voice) => {
+          const info = `${voice.name || ""} ${voice.voiceURI || ""}`.toLowerCase();
+          return maleNameHints.some((hint) => info.includes(hint));
+        });
+        utterance.voice = maleItalianVoice || italianVoices[0] || null;
+
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
+
+      getGroundFrameForCurrentForm() {
+        return this.isCoffeeForm ? 5 : 0;
       }
 
       preload() {
@@ -195,8 +251,8 @@
           frameWidth: 32,
           frameHeight: 48,
         });
-        this.load.image("player-jump", "../assets/characters/player_jump_32x48.png");
-        this.load.image("coffee-jump", "../assets/characters/coffee_jump_32x48.png");
+        this.load.image("player-jump", "../assets/characters/player_jump_32x48.png?v=20260213jumpfix");
+        this.load.image("coffee-jump", "../assets/characters/coffee_jump_32x48.png?v=20260213jumpfix");
         this.load.spritesheet("blackboy-throw", "../assets/characters/B4_classmate_sitting_aligned_32x48.png", {
           frameWidth: 32,
           frameHeight: 48,
@@ -213,7 +269,7 @@
           frameWidth: 32,
           frameHeight: 32,
         });
-        this.load.spritesheet("ball", "../assets/items/C1_basketball_spin_spritesheet.png", {
+        this.load.spritesheet("ball", "../assets/items/C1_basketball_spin_clean_spritesheet.png", {
           frameWidth: 16,
           frameHeight: 16,
         });
@@ -222,6 +278,7 @@
           frameHeight: 16,
         });
         this.load.image("badge", "../assets/items/C7_delivery_app_icon_placeholder.png");
+        this.load.image("thought-bubble", "../assets/ui/D2_thought_bubble_frame.png");
       }
 
       create() {
@@ -236,7 +293,7 @@
         this.physics.add.existing(this.ground, true);
 
         this.player = this.physics.add
-          .sprite(120, this.groundY, state.coffee ? "coffee" : "player", 0)
+          .sprite(120, this.groundY, state.coffee ? "coffee" : "player", state.coffee ? 5 : 0)
           .setName(SPRITE_IDS.PLAYER)
           .setOrigin(0.5, 1)
           .setCollideWorldBounds(true)
@@ -245,6 +302,7 @@
         this.applyScaleByVisibleHeight(this.player, state.coffee ? "coffee" : "player", WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX);
         this.configureActorBody(this.player);
         this.isCoffeeForm = state.coffee;
+        this.createJumpBubble();
 
         this.gift = this.add.sprite(620, this.groundY, "gift", 0).setDepth(6).setVisible(false);
         this.applyScaleByHeight(this.gift, WORLD_SCALE.INTERACTABLE_TARGET_PX);
@@ -260,10 +318,7 @@
         if (!this.anims.exists("ball-spin")) {
           this.anims.create({
             key: "ball-spin",
-            frames: [
-              { key: "ball", frame: 1 },
-              { key: "ball", frame: 2 },
-            ],
+            frames: this.anims.generateFrameNumbers("ball", { start: 0, end: 1 }),
             frameRate: 10,
             repeat: -1,
           });
@@ -295,6 +350,81 @@
         this.enterScene(this.sceneIndex);
       }
 
+      createJumpBubble() {
+        this.jumpBubble = this.add.image(0, 0, "thought-bubble").setOrigin(0.5).setDepth(9).setVisible(false);
+        this.jumpBubbleText = this.add
+          .text(0, 0, "我是奶龙", {
+            fontFamily: '"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif',
+            fontStyle: "900",
+            color: "#ffd84d",
+            stroke: "#7a2d00",
+            strokeThickness: 4,
+            shadow: {
+              offsetX: 1,
+              offsetY: 1,
+              color: "#2a1300",
+              blur: 0,
+              stroke: true,
+              fill: true,
+            },
+            align: "center",
+          })
+          .setOrigin(0.5)
+          .setDepth(10)
+          .setVisible(false);
+      }
+
+      updateJumpBubbleLayout() {
+        if (!this.player || !this.jumpBubble || !this.jumpBubbleText) return;
+
+        const playerHeight = Math.max(1, this.player.displayHeight);
+        const targetBubbleHeight = playerHeight * 0.95;
+        const bubbleTexture = this.textures.get("thought-bubble");
+        const bubbleFrame = bubbleTexture ? bubbleTexture.get("__BASE") : null;
+        const baseBubbleWidth = bubbleFrame ? bubbleFrame.width : 160;
+        const baseBubbleHeight = bubbleFrame ? bubbleFrame.height : 120;
+        const bubbleWidth = (baseBubbleWidth / baseBubbleHeight) * targetBubbleHeight;
+
+        this.jumpBubble.setDisplaySize(bubbleWidth, targetBubbleHeight);
+
+        const playerTopY = this.player.y - playerHeight;
+        let bubbleX = this.player.x + this.player.displayWidth * 0.66 + bubbleWidth * 0.34;
+        let bubbleY = playerTopY - targetBubbleHeight * 0.08;
+
+        bubbleX = Phaser.Math.Clamp(bubbleX, bubbleWidth * 0.52, BASE_WIDTH - bubbleWidth * 0.52);
+        bubbleY = Phaser.Math.Clamp(bubbleY, targetBubbleHeight * 0.52, BASE_HEIGHT - targetBubbleHeight * 0.52);
+
+        this.jumpBubble.setPosition(bubbleX, bubbleY);
+
+        const textBoxWidth = bubbleWidth * 0.6;
+        const textBoxHeight = targetBubbleHeight * 0.4;
+        const fontSize = Math.max(12, Math.round(targetBubbleHeight * 0.16));
+        const strokeThickness = Math.max(2, Math.round(targetBubbleHeight * 0.045));
+
+        this.jumpBubbleText.setFontSize(fontSize);
+        this.jumpBubbleText.setStroke("#7a2d00", strokeThickness);
+        this.jumpBubbleText.setWordWrapWidth(textBoxWidth, true);
+        this.jumpBubbleText.setFixedSize(textBoxWidth, textBoxHeight);
+        this.jumpBubbleText.setPosition(bubbleX + bubbleWidth * 0.04, bubbleY - targetBubbleHeight * 0.02);
+      }
+
+      showJumpBubbleForJump() {
+        if (!this.jumpBubble || !this.jumpBubbleText) return;
+        this.jumpBubbleVisible = true;
+        this.jumpBubbleSeenAirborne = false;
+        this.jumpBubble.setVisible(true);
+        this.jumpBubbleText.setVisible(true);
+        this.updateJumpBubbleLayout();
+      }
+
+      hideJumpBubble() {
+        if (!this.jumpBubble || !this.jumpBubbleText) return;
+        this.jumpBubbleVisible = false;
+        this.jumpBubbleSeenAirborne = false;
+        this.jumpBubble.setVisible(false);
+        this.jumpBubbleText.setVisible(false);
+      }
+
       restartRun() {
         this.runEnded = false;
         state.paused = false;
@@ -306,13 +436,16 @@
         this.invuln = 0;
 
         this.sceneIndex = 0;
+        state.coffee = false;
         state.scene = sceneKeys[0];
+        syncCoffeeToggles();
         this.awaitingFinalExit = false;
-        this.isCoffeeForm = state.coffee;
+        this.isCoffeeForm = false;
 
-        this.setPlayerTexture(state.coffee ? "coffee" : "player");
+        this.setPlayerTexture("player");
         this.player.setPosition(120, this.groundY);
         this.player.setVelocity(0, 0);
+        this.hideJumpBubble();
 
         this.enterScene(0);
         this.scene.resume();
@@ -329,8 +462,16 @@
           this.isCoffeeForm = key === "coffee";
         }
         const facingLeft = this.player.flipX;
-        this.player.setTexture(key, 0);
-        const baseFrame = this.textures.exists(key) ? "__BASE" : 0;
+        const frameForGround = this.getGroundFrameForCurrentForm();
+        const targetFrame = key === "player" || key === "coffee" ? frameForGround : 0;
+        this.player.setTexture(key, targetFrame);
+        const texture = this.textures.get(key);
+        const hasSpriteFrames =
+          texture &&
+          texture
+            .getFrameNames()
+            .some((name) => name !== "__BASE");
+        const baseFrame = hasSpriteFrames ? targetFrame : "__BASE";
         this.applyScaleByVisibleHeight(this.player, key, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, baseFrame);
         this.configureActorBody(this.player);
         this.player.setFlipX(facingLeft);
@@ -353,7 +494,7 @@
         return { width: source.width, height: source.height };
       }
 
-      getVisibleFrameSize(textureKey, frameName = 0) {
+      getVisibleFrameMetrics(textureKey, frameName = 0) {
         const cacheKey = `${textureKey}:${frameName}`;
         if (this.frameVisibleSizeCache[cacheKey]) {
           return this.frameVisibleSizeCache[cacheKey];
@@ -378,7 +519,17 @@
           }
         }
         if (!texture || !frame) {
-          return { width: 32, height: 32 };
+          return {
+            width: 32,
+            height: 32,
+            frameWidth: 32,
+            frameHeight: 32,
+            minX: 0,
+            minY: 0,
+            maxX: 31,
+            maxY: 31,
+            bottomOffset: 0,
+          };
         }
 
         const sourceImage = texture.getSourceImage();
@@ -416,13 +567,49 @@
           }
         }
 
-        const visible =
-          maxX >= minX && maxY >= minY
-            ? { width: maxX - minX + 1, height: maxY - minY + 1 }
-            : { width: frame.width, height: frame.height };
+        const hasVisiblePixels = maxX >= minX && maxY >= minY;
+        const metrics = hasVisiblePixels
+          ? {
+              width: maxX - minX + 1,
+              height: maxY - minY + 1,
+              frameWidth: frame.width,
+              frameHeight: frame.height,
+              minX,
+              minY,
+              maxX,
+              maxY,
+              bottomOffset: Math.max(0, frame.height - 1 - maxY),
+            }
+          : {
+              width: frame.width,
+              height: frame.height,
+              frameWidth: frame.width,
+              frameHeight: frame.height,
+              minX: 0,
+              minY: 0,
+              maxX: frame.width - 1,
+              maxY: frame.height - 1,
+              bottomOffset: 0,
+            };
 
-        this.frameVisibleSizeCache[cacheKey] = visible;
-        return visible;
+        this.frameVisibleSizeCache[cacheKey] = metrics;
+        return metrics;
+      }
+
+      getVisibleFrameSize(textureKey, frameName = 0) {
+        const metrics = this.getVisibleFrameMetrics(textureKey, frameName);
+        return { width: metrics.width, height: metrics.height };
+      }
+
+      getVisibleBottomOffset(textureKey, frameName = 0) {
+        const metrics = this.getVisibleFrameMetrics(textureKey, frameName);
+        return metrics.bottomOffset || 0;
+      }
+
+      getSpriteVisibleBottomY(sprite, textureKey, frameName = 0) {
+        if (!sprite) return this.groundY;
+        const bottomOffset = this.getVisibleBottomOffset(textureKey, frameName);
+        return sprite.y - bottomOffset * sprite.scaleY;
       }
 
       applyScaleByHeight(gameObject, targetHeightPx) {
@@ -455,6 +642,12 @@
         if (!targetObject || !referenceHeight || targetObject.displayHeight <= 0) return;
         const scaleRatio = referenceHeight / targetObject.displayHeight;
         targetObject.setScale(targetObject.scaleX * scaleRatio, targetObject.scaleY * scaleRatio);
+      }
+
+      alignVisibleBottomToY(targetObject, textureKey, referenceVisibleBottomY, frameName = 0) {
+        if (!targetObject) return;
+        const bottomOffset = this.getVisibleBottomOffset(textureKey, frameName);
+        targetObject.y = referenceVisibleBottomY + bottomOffset * targetObject.scaleY;
       }
 
       configureActorBody(actor) {
@@ -491,17 +684,36 @@
           this.npc.destroy();
           this.npc = null;
         }
+        if (this.witches && this.witches.length > 0) {
+          this.witches.forEach((witch) => {
+            if (witch) witch.destroy();
+          });
+        }
+        if (this.witchSpawnTimers && this.witchSpawnTimers.length > 0) {
+          this.witchSpawnTimers.forEach((timer) => {
+            if (timer) timer.remove(false);
+          });
+        }
+        this.witches = [];
+        this.nextWitchThrowIndex = 0;
+        this.witchLaneY = null;
+        this.witchSpawnTimers = [];
 
         if (this.popup) {
           this.popup.destroy();
           this.popup = null;
         }
 
-        this.hazards.clear(true, true);
-        this.gift.setVisible(false);
+        if (this.hazards) {
+          this.hazards.clear(true, true);
+        }
+        if (this.gift) {
+          this.gift.setVisible(false);
+        }
         this.giftOpened = false;
         this.giftLanded = false;
         this.awaitingFinalExit = false;
+        this.hideJumpBubble();
       }
 
       enterScene(index) {
@@ -524,20 +736,50 @@
         }
 
         if (index === 3) {
-          this.npc = this.add
-            .sprite(690, this.groundY, "witch", 0)
-            .setName(SPRITE_IDS.WITCH)
-            .setOrigin(0.5, 1)
-            .setDepth(4);
-          this.applyScaleByVisibleHeight(this.npc, "witch", WORLD_SCALE.NPC_TARGET_HEIGHT_PX + 6, 4);
-          this.matchDisplayHeight(this.npc, this.player.displayHeight * 1.05);
-          this.npc.anims.play("witch-run", true);
-          this.npc.setData("vx", -COMBAT.WITCH_PATROL_SPEED);
+          this.createWitchSquad();
           this.scheduleThrow("witch");
         }
 
         if (index === 5) {
           this.spawnGiftDrop();
+        }
+      }
+
+      createWitchSquad() {
+        this.witches = [];
+        this.nextWitchThrowIndex = 0;
+        this.witchLaneY = null;
+        this.witchSpawnTimers = [];
+
+        // Align witch visible bottom line to player's ground lane (player.y).
+        const playerLaneY = this.player ? this.player.y : this.groundY;
+        const playerTextureKey = this.player?.texture?.key || "player";
+        const playerFrameName = this.player?.frame?.name ?? 0;
+        const playerVisible = this.getVisibleFrameSize(playerTextureKey, playerFrameName);
+        const targetWitchVisibleHeight = Math.max(1, playerVisible.height * (this.player?.scaleY || 1));
+
+        let spawnX = BASE_WIDTH + 30;
+        for (let i = 0; i < COMBAT.WITCH_COUNT; i += 1) {
+          const spawnDelay = i * COMBAT.WITCH_SPAWN_INTERVAL_MS;
+          const currentSpawnX = spawnX;
+          const timer = this.time.delayedCall(spawnDelay, () => {
+            if (this.sceneIndex !== 3 || this.runEnded) return;
+            const witch = this.add
+              .sprite(currentSpawnX, this.groundY, "witch", 0)
+              .setName(SPRITE_IDS.WITCH)
+              .setOrigin(0.5, 1)
+              .setDepth(4);
+            // Match witch visible body height to player visible body height (1:1).
+            this.applyScaleByVisibleHeight(witch, "witch", targetWitchVisibleHeight, 0);
+            this.alignVisibleBottomToY(witch, "witch", playerLaneY, 0);
+            this.witchLaneY = this.witchLaneY === null ? witch.y : this.witchLaneY;
+            witch.setY(this.witchLaneY);
+            witch.anims.play("witch-run", true);
+            witch.setFlipX(false);
+            this.witches.push(witch);
+          });
+          this.witchSpawnTimers.push(timer);
+          spawnX += COMBAT.WITCH_SPAWN_GAP;
         }
       }
 
@@ -604,7 +846,7 @@
         });
         this.spawnProjectile(
           "ball",
-          1,
+          0,
           this.npc.x - this.npc.displayWidth * 0.45,
           y,
           -speed,
@@ -615,11 +857,15 @@
       }
 
       launchWitchThrow() {
-        if (this.sceneIndex !== 3 || !this.npc) return;
+        if (this.sceneIndex !== 3 || !this.witches || this.witches.length === 0) return;
+        const activeWitches = this.witches.filter((witch) => witch && witch.active);
+        if (activeWitches.length === 0) return;
+        const witch = activeWitches[this.nextWitchThrowIndex % activeWitches.length];
+        this.nextWitchThrowIndex = (this.nextWitchThrowIndex + 1) % activeWitches.length;
 
         this.tweens.add({
-          targets: this.npc,
-          y: this.npc.y - 5,
+          targets: witch,
+          y: witch.y - 5,
           duration: 90,
           yoyo: true,
           ease: "Sine.InOut",
@@ -631,7 +877,7 @@
         this.spawnProjectile(
           "obstacles",
           frame,
-          this.npc.x - this.npc.displayWidth * 0.48,
+          witch.x - witch.displayWidth * 0.48,
           y,
           -speed,
           WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX * 0.55,
@@ -669,6 +915,9 @@
         state.coffee = true;
         syncCoffeeToggles();
         this.setPlayerTexture("coffee");
+        this.player.anims.stop();
+        this.player.setFrame(this.getGroundFrameForCurrentForm());
+        this.speakFinalTransformNarration();
         this.awaitingFinalExit = true;
         this.triggerUberBadgePop(this.gift.x, this.gift.y - this.gift.displayHeight);
         return true;
@@ -703,27 +952,32 @@
         if (this.runEnded) return;
         this.runEnded = true;
         this.awaitingFinalExit = false;
+        this.hideJumpBubble();
         this.player.setVelocity(0, 0);
         this.physics.world.pause();
         showEnding();
       }
 
       updateWitchPatrol(delta) {
-        if (this.sceneIndex !== 3 || !this.npc) return;
-        const speed = COMBAT.WITCH_PATROL_SPEED;
-        let vx = this.npc.getData("vx") || -speed;
+        if (this.sceneIndex !== 3 || !this.witches || this.witches.length === 0) return;
 
-        this.npc.x += (vx * delta) / 1000;
-        this.npc.y = this.groundY;
+        const speed = COMBAT.WITCH_RUN_SPEED;
+        this.witches = this.witches.filter((witch) => {
+          if (!witch || !witch.active) return false;
 
-        if (this.npc.x <= COMBAT.WITCH_PATROL_MIN_X) {
-          vx = speed;
-        } else if (this.npc.x >= COMBAT.WITCH_PATROL_MAX_X) {
-          vx = -speed;
-        }
+          witch.x -= (speed * delta) / 1000;
+          if (this.witchLaneY !== null) {
+            witch.y = this.witchLaneY;
+          }
+          witch.setFlipX(false);
 
-        this.npc.setData("vx", vx);
-        this.npc.setFlipX(vx > 0);
+          const touchedLeftEdge = witch.x - witch.displayWidth * 0.5 <= 0;
+          if (touchedLeftEdge) {
+            witch.destroy();
+            return false;
+          }
+          return true;
+        });
       }
 
       onHit(player, hazard) {
@@ -756,6 +1010,13 @@
       update(time, delta) {
         if (!this.player || this.runEnded) return;
 
+        // Final scene contract: once the gift is opened, the player must stay in coffee form immediately.
+        if (this.sceneIndex === 5 && this.giftOpened && !this.isCoffeeForm) {
+          this.setPlayerTexture("coffee");
+          this.player.anims.stop();
+          this.player.setFrame(this.getGroundFrameForCurrentForm());
+        }
+
         if (this.invuln > 0) {
           this.invuln -= delta / 1000;
           this.player.setAlpha(this.invuln > 0 ? 0.6 : 1);
@@ -781,6 +1042,7 @@
           const interacted = this.tryOpenGift();
           if (!interacted && grounded) {
             body.setVelocityY(MOVEMENT.JUMP_VELOCITY);
+            this.showJumpBubbleForJump();
           }
         }
 
@@ -811,8 +1073,9 @@
           this.configureActorBody(this.player);
         } else if (this.player.texture.key === "player-jump" || this.player.texture.key === "coffee-jump") {
           const baseKey = this.isCoffeeForm ? "coffee" : "player";
-          this.player.setTexture(baseKey, 0);
-          this.applyScaleByVisibleHeight(this.player, baseKey, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, 0);
+          const groundedFrame = this.getGroundFrameForCurrentForm();
+          this.player.setTexture(baseKey, groundedFrame);
+          this.applyScaleByVisibleHeight(this.player, baseKey, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, groundedFrame);
           this.configureActorBody(this.player);
         }
 
@@ -820,7 +1083,16 @@
           this.player.anims.play(`${prefix}-run-side`, true);
         } else if (grounded) {
           this.player.anims.stop();
-          this.player.setFrame(0);
+          this.player.setFrame(this.getGroundFrameForCurrentForm());
+        }
+
+        if (this.jumpBubbleVisible) {
+          this.updateJumpBubbleLayout();
+          if (!grounded) {
+            this.jumpBubbleSeenAirborne = true;
+          } else if (this.jumpBubbleSeenAirborne) {
+            this.hideJumpBubble();
+          }
         }
 
         this.updateWitchPatrol(delta);
