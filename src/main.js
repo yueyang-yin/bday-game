@@ -195,6 +195,7 @@
         this.jumpBubbleText = null;
         this.jumpBubbleVisible = false;
         this.jumpBubbleSeenAirborne = false;
+        this.pendingSpacePress = false;
       }
 
       speakFinalTransformNarration() {
@@ -333,6 +334,15 @@
           });
         }
 
+        if (!this.anims.exists("gift-fall")) {
+          this.anims.create({
+            key: "gift-fall",
+            frames: this.anims.generateFrameNumbers("gift", { start: 1, end: 3 }),
+            frameRate: 10,
+            repeat: -1,
+          });
+        }
+
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys({
           left: Phaser.Input.Keyboard.KeyCodes.A,
@@ -340,9 +350,7 @@
         });
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.input.keyboard.on("keydown-SPACE", () => {
-          if (this.sceneIndex === 5 && !this.giftOpened) {
-            this.tryOpenGift();
-          }
+          this.pendingSpacePress = true;
         });
 
         this.cameras.main.roundPixels = true;
@@ -891,6 +899,7 @@
         this.giftLanded = false;
         this.gift.setVisible(true);
         this.gift.setFrame(1);
+        this.gift.play("gift-fall", true);
         this.gift.setPosition(620, -80);
 
         this.tweens.add({
@@ -899,6 +908,8 @@
           duration: 1000,
           ease: "Bounce.Out",
           onComplete: () => {
+            this.gift.anims.stop();
+            this.gift.setFrame(3);
             this.giftLanded = true;
           },
         });
@@ -911,7 +922,7 @@
         if (dist > 90) return false;
 
         this.giftOpened = true;
-        this.gift.setFrame(2);
+        this.gift.setFrame(4);
         state.coffee = true;
         syncCoffeeToggles();
         this.setPlayerTexture("coffee");
@@ -1038,7 +1049,26 @@
 
         const grounded = body.blocked.down || body.touching.down || body.onFloor();
 
-        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+        if (this.sceneIndex === 5 && this.giftOpened) {
+          if (!this.isCoffeeForm) {
+            this.isCoffeeForm = true;
+          }
+          if (this.player.texture.key === "player" || this.player.texture.key === "player-jump") {
+            if (grounded) {
+              this.setPlayerTexture("coffee");
+              this.player.anims.stop();
+              this.player.setFrame(this.getGroundFrameForCurrentForm());
+            } else {
+              this.player.setTexture("coffee-jump");
+              this.applyScaleByVisibleHeight(this.player, "coffee-jump", WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, "__BASE");
+              this.configureActorBody(this.player);
+            }
+          }
+        }
+
+        const spacePressed = this.pendingSpacePress || Phaser.Input.Keyboard.JustDown(this.spaceKey);
+        this.pendingSpacePress = false;
+        if (spacePressed) {
           const interacted = this.tryOpenGift();
           if (!interacted && grounded) {
             body.setVelocityY(MOVEMENT.JUMP_VELOCITY);
@@ -1065,7 +1095,7 @@
           this.player.setX(24);
         }
 
-        const prefix = this.player.texture.key === "coffee" ? "coffee" : "player";
+        const prefix = this.isCoffeeForm ? "coffee" : "player";
         if (!grounded) {
           const jumpKey = this.isCoffeeForm ? "coffee-jump" : "player-jump";
           this.player.setTexture(jumpKey);
