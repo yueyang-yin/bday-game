@@ -1,11 +1,12 @@
 :root {
-  --bg: #0d0c0a;
+  --bg: #2a2636;
   --panel: #f7e9d0;
   --panel-dark: #e4caa2;
   --accent: #d46b3a;
   --accent-dark: #8f3a1e;
   --ink: #2a1c12;
   --wood: #6f4b2c;
+  --page-backdrop: linear-gradient(160deg, #2a2636 0%, #343044 100%);
 }
 
 * {
@@ -53,10 +54,33 @@ body {
 }
 
 .landing {
-  background-size: contain;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-color: #121018;
+  background: var(--page-backdrop);
+}
+
+.pixel-canvas-frame {
+  width: min(100vw, 1200px);
+  height: min(100vh, 720px);
+  border: 6px solid #3d2a1a;
+  box-shadow: 0 14px 0 #2a190f;
+  background: #140f20;
+  overflow: hidden;
+}
+
+.landing-canvas {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.landing-bg-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  image-rendering: pixelated;
 }
 
 .hidden {
@@ -64,13 +88,15 @@ body {
 }
 
 .alien-start-btn {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 56%;
   z-index: 2;
   border: 0;
   background: transparent;
   padding: 0;
   cursor: pointer;
-  transform: translateY(8vh);
+  transform: translate(-50%, -50%);
   transition: transform 120ms ease, filter 120ms ease;
 }
 
@@ -83,11 +109,11 @@ body {
 }
 
 .alien-start-btn:hover {
-  transform: translateY(8vh) scale(1.04);
+  transform: translate(-50%, -50%) scale(1.04);
 }
 
 .alien-start-btn:active {
-  transform: translateY(8vh) scale(0.98);
+  transform: translate(-50%, -50%) scale(0.98);
 }
 
 .alien-start-btn:focus-visible {
@@ -115,15 +141,15 @@ body {
 
 @media (max-width: 768px) {
   .alien-start-btn {
-    transform: translateY(6vh);
+    top: 58%;
   }
 
   .alien-start-btn:hover {
-    transform: translateY(6vh) scale(1.03);
+    transform: translate(-50%, -50%) scale(1.03);
   }
 
   .alien-start-btn:active {
-    transform: translateY(6vh) scale(0.98);
+    transform: translate(-50%, -50%) scale(0.98);
   }
 
   .alien-start-btn img {
@@ -167,8 +193,12 @@ body {
 }
 
 .game {
-  background: #0b0a08;
+  background: var(--page-backdrop);
   position: relative;
+}
+
+.game::before {
+  background: none;
 }
 
 #game-wrap {
@@ -234,22 +264,26 @@ body {
 }
 
 .ending {
-  background: rgba(0, 0, 0, 0.32);
+  background: var(--page-backdrop);
 }
 
 .ending-card--alien {
   width: min(100vw, 1200px);
   height: min(100vh, 720px);
-  border: 0;
   border-radius: 0;
-  box-shadow: none;
   background: #140f20;
   padding: 0;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+.ending-card--alien.pixel-canvas-frame {
+  border: 6px solid #3d2a1a;
+  box-shadow: 0 14px 0 #2a190f;
 }
 
 .ending-bg-image {
