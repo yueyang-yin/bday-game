@@ -304,7 +304,7 @@
           frameHeight: 16,
         });
         this.load.image("badge", "../assets/items/C7_delivery_app_icon_placeholder.png");
-        this.load.image("thought-bubble", "../assets/ui/D2_thought_bubble_frame.png");
+        this.load.image("thought-bubble", "../assets/ui/D2_thought_bubble_frame.png?v=20260215bubblev2");
         this.load.image("hud-heart", "../assets/ui/hp_heart_pixel.png");
       }
 
@@ -391,14 +391,14 @@
         this.jumpBubbleText = this.add
           .text(0, 0, "我是奶龙", {
             fontFamily: '"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif',
-            fontStyle: "900",
-            color: "#ffd84d",
-            stroke: "#7a2d00",
-            strokeThickness: 4,
+            fontStyle: "800",
+            color: "#1a1a1a",
+            stroke: "#fff7d1",
+            strokeThickness: 3,
             shadow: {
               offsetX: 1,
               offsetY: 1,
-              color: "#2a1300",
+              color: "#1a1a1a",
               blur: 0,
               stroke: true,
               fill: true,
@@ -434,11 +434,11 @@
 
         const textBoxWidth = bubbleWidth * 0.6;
         const textBoxHeight = targetBubbleHeight * 0.4;
-        const fontSize = Math.max(12, Math.round(targetBubbleHeight * 0.16));
-        const strokeThickness = Math.max(2, Math.round(targetBubbleHeight * 0.045));
+        const fontSize = Math.max(13, Math.round(targetBubbleHeight * 0.18));
+        const strokeThickness = Math.max(2, Math.round(targetBubbleHeight * 0.032));
 
         this.jumpBubbleText.setFontSize(fontSize);
-        this.jumpBubbleText.setStroke("#7a2d00", strokeThickness);
+        this.jumpBubbleText.setStroke("#fff7d1", strokeThickness);
         this.jumpBubbleText.setWordWrapWidth(textBoxWidth, true);
         this.jumpBubbleText.setFixedSize(textBoxWidth, textBoxHeight);
         this.jumpBubbleText.setPosition(bubbleX + bubbleWidth * 0.04, bubbleY - targetBubbleHeight * 0.02);
