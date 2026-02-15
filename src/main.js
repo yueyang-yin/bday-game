@@ -58,6 +58,24 @@
   };
   const sceneKeys = ["bg1", "bg2", "bg3", "bg4", "bg5", "bg6"];
   const FINAL_TRANSFORM_ITALIAN_LINE = "Ballerina Cappuccina";
+  const HEALTH_RULES = {
+    MAX_HP: 6,
+    INVULN_SECONDS: 1.2,
+    DAMAGE_TRAIL_SECONDS: 1.35,
+    DAMAGE_TRAIL_INTERVAL_MS: 75,
+    ZERO_HP_RESTART_DELAY_MS: 900,
+  };
+  const SCENE4_BALANCE = {
+    THROW_INTERVAL_EXTRA_MIN_MS: 520,
+    THROW_INTERVAL_EXTRA_MAX_MS: 900,
+    PROJECTILE_SPEED_REDUCTION_MIN: 60,
+    PROJECTILE_SPEED_REDUCTION_MAX: 70,
+    PROJECTILE_SIZE_MULTIPLIER: 0.42,
+    WITCH_SPAWN_GAP: 240,
+    WITCH_SPAWN_INTERVAL_MS: 920,
+    WITCH_RUN_SPEED: 76,
+    MAX_ACTIVE_PROJECTILES: 2,
+  };
 
   function resetRunStateToDefaultGirl() {
     state.coffee = false;
@@ -196,6 +214,13 @@
         this.jumpBubbleVisible = false;
         this.jumpBubbleSeenAirborne = false;
         this.pendingSpacePress = false;
+        this.health = HEALTH_RULES.MAX_HP;
+        this.healthIcons = [];
+        this.damageTrailRemaining = 0;
+        this.damageTrailCooldownMs = 0;
+        this.damageGhosts = [];
+        this.awaitingRespawn = false;
+        this.respawnTimer = null;
       }
 
       speakFinalTransformNarration() {
@@ -280,6 +305,7 @@
         });
         this.load.image("badge", "../assets/items/C7_delivery_app_icon_placeholder.png");
         this.load.image("thought-bubble", "../assets/ui/D2_thought_bubble_frame.png");
+        this.load.image("hud-heart", "../assets/ui/hp_heart_pixel.png");
       }
 
       create() {
@@ -304,6 +330,8 @@
         this.configureActorBody(this.player);
         this.isCoffeeForm = state.coffee;
         this.createJumpBubble();
+        this.createHealthHud();
+        this.resetHealth();
 
         this.gift = this.add.sprite(620, this.groundY, "gift", 0).setDepth(6).setVisible(false);
         this.applyScaleByHeight(this.gift, WORLD_SCALE.INTERACTABLE_TARGET_PX);
@@ -433,15 +461,144 @@
         this.jumpBubbleText.setVisible(false);
       }
 
+      createHealthHud() {
+        if (this.healthIcons.length > 0) return;
+        const startX = 18;
+        const startY = 12;
+        const spacing = 30;
+        for (let i = 0; i < HEALTH_RULES.MAX_HP; i += 1) {
+          const heart = this.add
+            .image(startX + i * spacing, startY, "hud-heart")
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(20)
+            .setScale(0.82);
+          this.healthIcons.push(heart);
+        }
+      }
+
+      resetHealth() {
+        this.health = HEALTH_RULES.MAX_HP;
+        this.updateHealthHud();
+      }
+
+      updateHealthHud() {
+        if (!this.healthIcons || this.healthIcons.length === 0) return;
+        this.healthIcons.forEach((heart, index) => {
+          if (!heart) return;
+          if (index < this.health) {
+            heart.clearTint();
+            heart.setAlpha(1);
+          } else {
+            heart.setTint(0x5f2b35);
+            heart.setAlpha(0.35);
+          }
+        });
+      }
+
+      clearDamageGhosts() {
+        if (!this.damageGhosts || this.damageGhosts.length === 0) return;
+        this.damageGhosts.forEach((ghost) => {
+          if (ghost && ghost.active) ghost.destroy();
+        });
+        this.damageGhosts = [];
+      }
+
+      emitDamageGhost() {
+        if (!this.player || !this.player.active) return;
+        const ghost = this.add
+          .sprite(this.player.x, this.player.y, this.player.texture.key, this.player.frame?.name ?? 0)
+          .setOrigin(0.5, 1)
+          .setDepth(this.player.depth - 0.2)
+          .setScale(this.player.scaleX, this.player.scaleY)
+          .setFlipX(this.player.flipX)
+          .setAlpha(0.42);
+        this.damageGhosts.push(ghost);
+        this.tweens.add({
+          targets: ghost,
+          alpha: 0,
+          x: ghost.x + (this.player.flipX ? 9 : -9),
+          y: ghost.y - 6,
+          duration: 360,
+          ease: "Sine.Out",
+          onComplete: () => {
+            if (ghost && ghost.active) ghost.destroy();
+            this.damageGhosts = this.damageGhosts.filter((item) => item && item !== ghost && item.active);
+          },
+        });
+      }
+
+      startDamageVisuals() {
+        this.player.setTint(0xffb3b3);
+        this.time.delayedCall(280, () => {
+          if (this.player && this.player.active) this.player.clearTint();
+        });
+        this.damageTrailRemaining = HEALTH_RULES.DAMAGE_TRAIL_SECONDS;
+        this.damageTrailCooldownMs = 0;
+        this.emitDamageGhost();
+      }
+
+      updateDamageTrail(delta) {
+        if (this.damageTrailRemaining <= 0) return;
+        this.damageTrailRemaining = Math.max(0, this.damageTrailRemaining - delta / 1000);
+        this.damageTrailCooldownMs -= delta;
+        if (this.damageTrailCooldownMs <= 0) {
+          this.emitDamageGhost();
+          this.damageTrailCooldownMs = HEALTH_RULES.DAMAGE_TRAIL_INTERVAL_MS;
+        }
+      }
+
+      loseHealth(amount = 1) {
+        this.health = Math.max(0, this.health - amount);
+        this.updateHealthHud();
+        if (this.health <= 0) {
+          this.startRespawnToFirstScene();
+        }
+      }
+
+      startRespawnToFirstScene() {
+        if (this.awaitingRespawn) return;
+        this.awaitingRespawn = true;
+        this.hideJumpBubble();
+        this.player.setVelocity(0, 0);
+        this.clearSceneActors();
+        if (this.respawnTimer) {
+          this.respawnTimer.remove(false);
+          this.respawnTimer = null;
+        }
+        this.respawnTimer = this.time.delayedCall(HEALTH_RULES.ZERO_HP_RESTART_DELAY_MS, () => {
+          this.respawnTimer = null;
+          this.restartRun();
+        });
+      }
+
+      getThrowDelayMs(type) {
+        if (type === "witch") {
+          return Phaser.Math.Between(
+            COMBAT.THROW_INTERVAL_MIN_MS + SCENE4_BALANCE.THROW_INTERVAL_EXTRA_MIN_MS,
+            COMBAT.THROW_INTERVAL_MAX_MS + SCENE4_BALANCE.THROW_INTERVAL_EXTRA_MAX_MS
+          );
+        }
+        return Phaser.Math.Between(COMBAT.THROW_INTERVAL_MIN_MS, COMBAT.THROW_INTERVAL_MAX_MS);
+      }
+
       restartRun() {
         this.runEnded = false;
+        this.awaitingRespawn = false;
         state.paused = false;
         pauseOverlay.classList.add("hidden");
 
         this.physics.world.resume();
+        this.clearDamageGhosts();
+        this.damageTrailRemaining = 0;
+        this.damageTrailCooldownMs = 0;
         this.player.clearTint();
         this.player.setAlpha(1);
         this.invuln = 0;
+        if (this.respawnTimer) {
+          this.respawnTimer.remove(false);
+          this.respawnTimer = null;
+        }
 
         this.sceneIndex = 0;
         state.coffee = false;
@@ -454,6 +611,7 @@
         this.player.setPosition(120, this.groundY);
         this.player.setVelocity(0, 0);
         this.hideJumpBubble();
+        this.resetHealth();
 
         this.enterScene(0);
         this.scene.resume();
@@ -715,6 +873,7 @@
         if (this.hazards) {
           this.hazards.clear(true, true);
         }
+        this.clearDamageGhosts();
         if (this.gift) {
           this.gift.setVisible(false);
         }
@@ -768,7 +927,7 @@
 
         let spawnX = BASE_WIDTH + 30;
         for (let i = 0; i < COMBAT.WITCH_COUNT; i += 1) {
-          const spawnDelay = i * COMBAT.WITCH_SPAWN_INTERVAL_MS;
+          const spawnDelay = i * SCENE4_BALANCE.WITCH_SPAWN_INTERVAL_MS;
           const currentSpawnX = spawnX;
           const timer = this.time.delayedCall(spawnDelay, () => {
             if (this.sceneIndex !== 3 || this.runEnded) return;
@@ -787,7 +946,7 @@
             this.witches.push(witch);
           });
           this.witchSpawnTimers.push(timer);
-          spawnX += COMBAT.WITCH_SPAWN_GAP;
+          spawnX += SCENE4_BALANCE.WITCH_SPAWN_GAP;
         }
       }
 
@@ -797,7 +956,7 @@
           this.throwTimer = null;
         }
 
-        const delay = Phaser.Math.Between(COMBAT.THROW_INTERVAL_MIN_MS, COMBAT.THROW_INTERVAL_MAX_MS);
+        const delay = this.getThrowDelayMs(type);
         this.throwTimer = this.time.delayedCall(delay, () => {
           if (type === "blackboy") {
             this.launchBlackboyThrow();
@@ -866,6 +1025,11 @@
 
       launchWitchThrow() {
         if (this.sceneIndex !== 3 || !this.witches || this.witches.length === 0) return;
+        const activeProjectiles = this.hazards
+          .getChildren()
+          .filter((child) => child && child.active && child.texture?.key === "obstacles").length;
+        if (activeProjectiles >= SCENE4_BALANCE.MAX_ACTIVE_PROJECTILES) return;
+
         const activeWitches = this.witches.filter((witch) => witch && witch.active);
         if (activeWitches.length === 0) return;
         const witch = activeWitches[this.nextWitchThrowIndex % activeWitches.length];
@@ -879,7 +1043,9 @@
           ease: "Sine.InOut",
         });
 
-        const speed = Phaser.Math.Between(COMBAT.PROJECTILE_SPEED_X_MIN, COMBAT.PROJECTILE_SPEED_X_MAX);
+        const minSpeed = Math.max(120, COMBAT.PROJECTILE_SPEED_X_MIN - SCENE4_BALANCE.PROJECTILE_SPEED_REDUCTION_MIN);
+        const maxSpeed = Math.max(minSpeed + 20, COMBAT.PROJECTILE_SPEED_X_MAX - SCENE4_BALANCE.PROJECTILE_SPEED_REDUCTION_MAX);
+        const speed = Phaser.Math.Between(minSpeed, maxSpeed);
         const frame = 1;
         const y = this.player.y - this.player.displayHeight * 0.5;
         this.spawnProjectile(
@@ -888,7 +1054,7 @@
           witch.x - witch.displayWidth * 0.48,
           y,
           -speed,
-          WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX * 0.55,
+          WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX * SCENE4_BALANCE.PROJECTILE_SIZE_MULTIPLIER,
           COMBAT.PROJECTILE_TTL_MS,
           null
         );
@@ -972,7 +1138,7 @@
       updateWitchPatrol(delta) {
         if (this.sceneIndex !== 3 || !this.witches || this.witches.length === 0) return;
 
-        const speed = COMBAT.WITCH_RUN_SPEED;
+        const speed = SCENE4_BALANCE.WITCH_RUN_SPEED;
         this.witches = this.witches.filter((witch) => {
           if (!witch || !witch.active) return false;
 
@@ -992,13 +1158,11 @@
       }
 
       onHit(player, hazard) {
-        if (this.invuln > 0) return;
-        this.invuln = 1.1;
-        hazard.destroy();
-        player.setTint(0xffb3b3);
-        this.time.delayedCall(280, () => {
-          if (this.player) this.player.clearTint();
-        });
+        if (this.invuln > 0 || this.awaitingRespawn || this.runEnded) return;
+        this.invuln = HEALTH_RULES.INVULN_SECONDS;
+        if (hazard && hazard.active) hazard.destroy();
+        this.startDamageVisuals();
+        this.loseHealth(1);
       }
 
       cleanupHazards() {
@@ -1021,6 +1185,14 @@
       update(time, delta) {
         if (!this.player || this.runEnded) return;
 
+        this.updateDamageTrail(delta);
+
+        if (this.awaitingRespawn) {
+          this.player.setVelocity(0, 0);
+          this.cleanupHazards();
+          return;
+        }
+
         // Final scene contract: once the gift is opened, the player must stay in coffee form immediately.
         if (this.sceneIndex === 5 && this.giftOpened && !this.isCoffeeForm) {
           this.setPlayerTexture("coffee");
@@ -1029,7 +1201,7 @@
         }
 
         if (this.invuln > 0) {
-          this.invuln -= delta / 1000;
+          this.invuln = Math.max(0, this.invuln - delta / 1000);
           this.player.setAlpha(this.invuln > 0 ? 0.6 : 1);
         }
 
