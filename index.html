@@ -3,20 +3,130 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="refresh" content="0; url=./src/index.html" />
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/ui/favicon-32.png?v=20260214tabicon-big1" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/ui/apple-touch-icon.png?v=20260214tabicon-big1" />
-  <title>小兽的生日大冒险</title>
-  <style>
-    body { font-family: "Songti SC", "PingFang SC", serif; padding: 40px; }
-    a { color: #9d2f1a; }
-  </style>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>你今天变成了老兽</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/ui/favicon-32.png?v=20260219tabicon-restore1" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/ui/apple-touch-icon.png?v=20260219tabicon-restore1" />
+  <link rel="stylesheet" href="./src/styles.css?v=20260219mobilefix5" />
 </head>
 <body>
-  正在进入礼物页面… 如果没有跳转，请点击：
-  <a href="./src/index.html">进入小兽的生日大冒险</a>
-  <script>
-    window.location.replace("./src/index.html");
-  </script>
+  <div id="app">
+    <section id="landing" class="screen landing">
+      <div id="landing-wrap" class="screen-wrap">
+        <div class="landing-canvas pixel-canvas-frame stage-frame">
+          <img
+            class="landing-bg-image"
+            src="./assets/scenes/chatgpt_landing_bg.png"
+            alt="首页背景"
+          />
+          <button id="start-btn" class="alien-start-btn" aria-label="开始游戏">
+            <img src="./assets/ui/alien_play_button.png" alt="开始游戏" />
+          </button>
+        </div>
+        <div class="mobile-controls mobile-controls--static" aria-hidden="true">
+          <div class="mobile-controls__move">
+            <button class="mobile-key mobile-key--left" type="button" tabindex="-1">
+              <img src="./assets/ui/mobile-btn-left.png" alt="" draggable="false" />
+            </button>
+            <button class="mobile-key mobile-key--right" type="button" tabindex="-1">
+              <img src="./assets/ui/mobile-btn-right.png" alt="" draggable="false" />
+            </button>
+          </div>
+          <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
+            <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="game" class="screen game hidden">
+      <div id="game-wrap" class="screen-wrap">
+        <div id="game-stage" class="stage-frame">
+          <div id="game-canvas"></div>
+          <button id="hint-btn" class="hint-btn" aria-label="按键提示">?</button>
+        </div>
+        <div id="mobile-controls" class="mobile-controls" aria-label="移动端虚拟键盘">
+          <div class="mobile-controls__move">
+            <button
+              id="mobile-left-btn"
+              class="mobile-key mobile-key--left"
+              data-control="left"
+              aria-label="向左移动"
+              type="button"
+            >
+              <img src="./assets/ui/mobile-btn-left.png" alt="向左" draggable="false" />
+            </button>
+            <button
+              id="mobile-right-btn"
+              class="mobile-key mobile-key--right"
+              data-control="right"
+              aria-label="向右移动"
+              type="button"
+            >
+              <img src="./assets/ui/mobile-btn-right.png" alt="向右" draggable="false" />
+            </button>
+          </div>
+          <button
+            id="mobile-space-btn"
+            class="mobile-key mobile-key--jump"
+            data-control="space"
+            aria-label="跳跃与交互"
+            type="button"
+          >
+            <img src="./assets/ui/mobile-btn-space.png" alt="跳跃与交互" draggable="false" />
+          </button>
+        </div>
+      </div>
+      <div id="pause" class="pause hidden">
+        <div class="pause-card">
+          <h2>暂停</h2>
+          <button class="btn primary" id="resume-btn">继续</button>
+        </div>
+      </div>
+      <div id="hint" class="hint hidden">
+        <div class="hint-card">
+          <p>移动：左右方向键 / A D</p>
+          <p>跳跃：空格</p>
+          <p>移动端：屏幕下方虚拟按键</p>
+          <p>暂停：ESC</p>
+          <p>最终幕互动：靠近礼物后按空格</p>
+          <button class="btn ghost" id="close-hint">关闭</button>
+        </div>
+      </div>
+      <div id="ending" class="ending hidden">
+        <div id="ending-wrap" class="screen-wrap">
+          <div class="ending-card ending-card--alien pixel-canvas-frame stage-frame">
+            <img
+              class="ending-bg-image"
+              src="./assets/scenes/ending_bg_chatgpt_room.png"
+              alt="结束页背景"
+            />
+            <button id="home-btn" class="alien-home-btn" aria-label="回到首页">
+              <img src="./assets/ui/alien_home_button_yellow.png" alt="回到首页" />
+            </button>
+          </div>
+          <div class="mobile-controls mobile-controls--static" aria-hidden="true">
+            <div class="mobile-controls__move">
+              <button class="mobile-key mobile-key--left" type="button" tabindex="-1">
+                <img src="./assets/ui/mobile-btn-left.png" alt="" draggable="false" />
+              </button>
+              <button class="mobile-key mobile-key--right" type="button" tabindex="-1">
+                <img src="./assets/ui/mobile-btn-right.png" alt="" draggable="false" />
+              </button>
+            </div>
+            <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
+              <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./src/vendor/phaser.min.js?v=20260215hpfix1"></script>
+  <script src="./src/constants.js?v=20260215hpfix1"></script>
+  <script src="./src/main.js?v=20260219mobilefix6"></script>
 </body>
 </html>

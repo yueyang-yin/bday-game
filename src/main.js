@@ -12,6 +12,7 @@
 
   const ending = document.getElementById("ending");
   const homeBtn = document.getElementById("home-btn");
+  const virtualControlButtons = Array.from(document.querySelectorAll(".mobile-key[data-control]"));
 
   const constants = window.__BDG_CONSTANTS || {};
   const BASE_WIDTH = constants.BASE_WIDTH || 800;
@@ -76,6 +77,222 @@
     WITCH_RUN_SPEED: 76,
     MAX_ACTIVE_PROJECTILES: 2,
   };
+  const SPEECH_RETRY_DELAY_MS = 220;
+  const virtualInputState = {
+    left: false,
+    right: false,
+    spaceQueued: false,
+  };
+  const activeVirtualPointers = new Map();
+
+  function supportsSpeechSynthesis() {
+    return "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
+  }
+
+  function primeSpeechSynthesis() {
+    if (!supportsSpeechSynthesis()) return;
+    const synth = window.speechSynthesis;
+    try {
+      synth.getVoices();
+      // iOS Safari frequently requires a prior user-gesture speech call to unlock later narration.
+      const warmup = new window.SpeechSynthesisUtterance(".");
+      warmup.volume = 0;
+      warmup.rate = 1;
+      warmup.pitch = 1;
+      synth.speak(warmup);
+      synth.cancel();
+    } catch (_err) {
+      // Ignore warmup failures and keep runtime resilient.
+    }
+  }
+
+  function syncVirtualDirectionalState() {
+    virtualInputState.left = false;
+    virtualInputState.right = false;
+    activeVirtualPointers.forEach((control) => {
+      if (control === "left") virtualInputState.left = true;
+      if (control === "right") virtualInputState.right = true;
+    });
+  }
+
+  function syncVirtualButtonStates() {
+    const pressedCount = {
+      left: 0,
+      right: 0,
+      space: 0,
+    };
+
+    activeVirtualPointers.forEach((control) => {
+      if (pressedCount[control] !== undefined) {
+        pressedCount[control] += 1;
+      }
+    });
+
+    virtualControlButtons.forEach((button) => {
+      const control = button.dataset.control;
+      button.classList.toggle("is-pressed", !!(control && pressedCount[control] > 0));
+    });
+  }
+
+  function releaseVirtualPointer(pointerId) {
+    if (!activeVirtualPointers.has(pointerId)) return;
+    activeVirtualPointers.delete(pointerId);
+    syncVirtualDirectionalState();
+    syncVirtualButtonStates();
+  }
+
+  function activateVirtualPointer(pointerId, control) {
+    activeVirtualPointers.set(pointerId, control);
+    if (control === "space") {
+      virtualInputState.spaceQueued = true;
+    }
+    syncVirtualDirectionalState();
+    syncVirtualButtonStates();
+  }
+
+  function clearVirtualControls() {
+    activeVirtualPointers.clear();
+    virtualInputState.left = false;
+    virtualInputState.right = false;
+    virtualInputState.spaceQueued = false;
+    virtualControlButtons.forEach((button) => button.classList.remove("is-pressed"));
+  }
+
+  virtualControlButtons.forEach((button) => {
+    const control = button.dataset.control;
+    if (!control) return;
+
+    button.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      event.preventDefault();
+      primeSpeechSynthesis();
+
+      activateVirtualPointer(event.pointerId, control);
+
+      if (button.setPointerCapture) {
+        try {
+          button.setPointerCapture(event.pointerId);
+        } catch (_err) {
+          // Ignore unsupported pointer capture environments.
+        }
+      }
+    });
+
+    const release = (event) => {
+      if (button.releasePointerCapture) {
+        try {
+          if (button.hasPointerCapture && button.hasPointerCapture(event.pointerId)) {
+            button.releasePointerCapture(event.pointerId);
+          }
+        } catch (_err) {
+          // Ignore unsupported pointer capture environments.
+        }
+      }
+      releaseVirtualPointer(event.pointerId);
+    };
+
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+
+    if (!("PointerEvent" in window)) {
+      const mousePointerId = `mouse-${control}`;
+
+      button.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        primeSpeechSynthesis();
+        activateVirtualPointer(mousePointerId, control);
+      });
+
+      button.addEventListener("mouseup", () => {
+        releaseVirtualPointer(mousePointerId);
+      });
+
+      button.addEventListener("mouseleave", () => {
+        releaseVirtualPointer(mousePointerId);
+      });
+
+      button.addEventListener(
+        "touchstart",
+        (event) => {
+          event.preventDefault();
+          primeSpeechSynthesis();
+          for (let i = 0; i < event.changedTouches.length; i += 1) {
+            const touch = event.changedTouches[i];
+            activateVirtualPointer(`touch-${touch.identifier}`, control);
+          }
+        },
+        { passive: false }
+      );
+
+      const releaseTouches = (event) => {
+        for (let i = 0; i < event.changedTouches.length; i += 1) {
+          const touch = event.changedTouches[i];
+          releaseVirtualPointer(`touch-${touch.identifier}`);
+        }
+      };
+
+      button.addEventListener("touchend", releaseTouches);
+      button.addEventListener("touchcancel", releaseTouches);
+    }
+  });
+
+  window.addEventListener(
+    "pointerup",
+    (event) => {
+      releaseVirtualPointer(event.pointerId);
+    },
+    true
+  );
+  window.addEventListener(
+    "pointercancel",
+    (event) => {
+      releaseVirtualPointer(event.pointerId);
+    },
+    true
+  );
+  window.addEventListener(
+    "touchend",
+    (event) => {
+      if (!event.touches || event.touches.length === 0) {
+        clearVirtualControls();
+      }
+    },
+    { passive: true }
+  );
+  window.addEventListener(
+    "touchcancel",
+    () => {
+      clearVirtualControls();
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    "contextmenu",
+    (event) => {
+      if (event.target instanceof Element && event.target.closest(".mobile-controls")) {
+        event.preventDefault();
+      }
+    },
+    true
+  );
+
+  window.addEventListener("blur", clearVirtualControls);
+  window.addEventListener("pagehide", clearVirtualControls);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) clearVirtualControls();
+  });
+  window.addEventListener("pointerdown", primeSpeechSynthesis, { once: true, capture: true });
+  window.addEventListener("touchstart", primeSpeechSynthesis, { once: true, passive: true, capture: true });
+  window.addEventListener(
+    "keydown",
+    () => {
+      primeSpeechSynthesis();
+    },
+    { once: true, capture: true }
+  );
 
   function resetRunStateToDefaultGirl() {
     state.coffee = false;
@@ -127,6 +344,7 @@
 
   if (homeBtn && gameScreen && landing) {
     homeBtn.addEventListener("click", () => {
+      clearVirtualControls();
       hideEnding();
       resetRunStateToDefaultGirl();
       state.paused = false;
@@ -143,7 +361,9 @@
         return;
       }
 
+      primeSpeechSynthesis();
       hideEnding();
+      clearVirtualControls();
       resetRunStateToDefaultGirl();
       landing.classList.add("hidden");
       gameScreen.classList.remove("hidden");
@@ -160,6 +380,9 @@
   function togglePause(force) {
     if (!state.started || state.ended) return;
     state.paused = typeof force === "boolean" ? force : !state.paused;
+    if (state.paused) {
+      clearVirtualControls();
+    }
     withScene((scene) => {
       if (state.paused) {
         scene.scene.pause();
@@ -224,17 +447,15 @@
       }
 
       speakFinalTransformNarration() {
-        if (!("speechSynthesis" in window) || typeof window.SpeechSynthesisUtterance !== "function") {
+        if (!supportsSpeechSynthesis()) {
           return;
         }
+        const synth = window.speechSynthesis;
+        if (typeof synth.resume === "function") {
+          synth.resume();
+        }
 
-        const utterance = new window.SpeechSynthesisUtterance(FINAL_TRANSFORM_ITALIAN_LINE);
-        utterance.lang = "it-IT";
-        utterance.rate = 0.8;
-        utterance.pitch = 0.78;
-        utterance.volume = 1;
-
-        const voices = window.speechSynthesis.getVoices();
+        const voices = synth.getVoices();
         const italianVoices = voices.filter((voice) => (voice.lang || "").toLowerCase().startsWith("it"));
         const maleNameHints = [
           "male",
@@ -251,10 +472,25 @@
           const info = `${voice.name || ""} ${voice.voiceURI || ""}`.toLowerCase();
           return maleNameHints.some((hint) => info.includes(hint));
         });
-        utterance.voice = maleItalianVoice || italianVoices[0] || null;
+        const selectedVoice = maleItalianVoice || italianVoices[0] || null;
 
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
+        const speakOnce = () => {
+          const utterance = new window.SpeechSynthesisUtterance(FINAL_TRANSFORM_ITALIAN_LINE);
+          utterance.lang = "it-IT";
+          utterance.rate = 0.8;
+          utterance.pitch = 0.78;
+          utterance.volume = 1;
+          utterance.voice = selectedVoice;
+          synth.cancel();
+          synth.speak(utterance);
+        };
+
+        speakOnce();
+        this.time.delayedCall(SPEECH_RETRY_DELAY_MS, () => {
+          if (!synth.speaking && !synth.pending) {
+            speakOnce();
+          }
+        });
       }
 
       getGroundFrameForCurrentForm() {
@@ -1206,8 +1442,8 @@
         }
 
         const body = this.player.body;
-        const left = this.cursors.left.isDown || this.keys.left.isDown;
-        const right = this.cursors.right.isDown || this.keys.right.isDown;
+        const left = this.cursors.left.isDown || this.keys.left.isDown || virtualInputState.left;
+        const right = this.cursors.right.isDown || this.keys.right.isDown || virtualInputState.right;
 
         body.setVelocityX(0);
 
@@ -1238,8 +1474,10 @@
           }
         }
 
-        const spacePressed = this.pendingSpacePress || Phaser.Input.Keyboard.JustDown(this.spaceKey);
+        const spacePressed =
+          this.pendingSpacePress || virtualInputState.spaceQueued || Phaser.Input.Keyboard.JustDown(this.spaceKey);
         this.pendingSpacePress = false;
+        virtualInputState.spaceQueued = false;
         if (spacePressed) {
           const interacted = this.tryOpenGift();
           if (!interacted && grounded) {

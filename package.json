@@ -4,7 +4,7 @@
   "description": "这是一个纯静态的网页生日礼物呈现页面，包含：场景长廊、角色档案、礼物互动、像素 UI 展示与祝福信。",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "playwright test"
   },
   "repository": {
     "type": "git",

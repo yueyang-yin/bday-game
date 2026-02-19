@@ -5,7 +5,7 @@ const { test, expect } = require("@playwright/test");
 const BASE_URL = process.env.PW_BASE_URL || "http://127.0.0.1:8080";
 
 test("第六幕礼物下落、落地与交互后都应保持完整单体形态", async ({ page }, testInfo) => {
-  await page.goto(`${BASE_URL}/src/index.html`);
+  await page.goto(`${BASE_URL}/`);
   await page.click("#start-btn");
   await page.waitForFunction(() => {
     const scene = window.__xiaoshouGame?.scene?.getScene("free");

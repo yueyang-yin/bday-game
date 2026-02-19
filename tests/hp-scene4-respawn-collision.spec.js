@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 const BASE_URL = process.env.PW_BASE_URL || "http://127.0.0.1:8080";
 
 test("第四幕连续受击 6 次后应自动回到第一幕，且不返回 landing page", async ({ page }, testInfo) => {
-  await page.goto(`${BASE_URL}/src/index.html`);
+  await page.goto(`${BASE_URL}/`);
   await page.click("#start-btn");
 
   await page.waitForFunction(() => {

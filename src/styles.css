@@ -7,6 +7,10 @@
   --ink: #2a1c12;
   --wood: #6f4b2c;
   --page-backdrop: linear-gradient(160deg, #2a2636 0%, #343044 100%);
+  --stage-ratio: 1.7777778;
+  --stage-max-width: 1200px;
+  --viewport-padding: clamp(10px, 2.8vw, 24px);
+  --mobile-controls-reserve: 0px;
 }
 
 * {
@@ -58,12 +62,35 @@ body {
 }
 
 .pixel-canvas-frame {
-  width: min(100vw, 1200px);
-  height: min(100vh, 720px);
   border: 6px solid #3d2a1a;
   box-shadow: 0 14px 0 #2a190f;
   background: #140f20;
   overflow: hidden;
+}
+
+#landing-wrap,
+#game-wrap,
+#ending-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: var(--viewport-padding);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.6vh, 24px);
+  z-index: 2;
+}
+
+.stage-frame {
+  width: min(
+    var(--stage-max-width),
+    calc(100vw - var(--viewport-padding) * 2),
+    calc((100vh - var(--viewport-padding) * 2 - var(--mobile-controls-reserve)) * var(--stage-ratio))
+  );
+  max-height: calc(100vh - var(--viewport-padding) * 2 - var(--mobile-controls-reserve));
+  aspect-ratio: var(--stage-ratio);
 }
 
 .landing-canvas {
@@ -71,7 +98,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
 }
 
 .landing-bg-image {
@@ -201,22 +227,111 @@ body {
   background: none;
 }
 
-#game-wrap {
+#game-stage {
   position: relative;
-  width: min(100vw, 1200px);
-  height: min(100vh, 720px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 0 0 6px #3d2a1a, 0 14px 0 #2a190f;
+  overflow: hidden;
+  background: #0d0d10;
 }
 
 #game-canvas canvas {
+  display: block;
   width: 100% !important;
   height: 100% !important;
   image-rendering: pixelated;
-  border: 6px solid #3d2a1a;
-  box-shadow: 0 14px 0 #2a190f;
+}
+
+.mobile-controls {
+  display: none;
+  width: min(420px, 100%);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 4vw, 26px);
+  touch-action: manipulation;
+}
+
+.mobile-controls__move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 3.5vw, 20px);
+}
+
+.mobile-key {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: clamp(56px, 16.5vw, 84px);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.mobile-key img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 5px 8px rgba(12, 8, 40, 0.36));
+  transition: transform 80ms ease, filter 80ms ease;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+.mobile-key--jump {
+  width: clamp(86px, 24vw, 130px);
+}
+
+.mobile-key.is-pressed img {
+  transform: translateY(3px) scale(0.96);
+  filter: drop-shadow(0 2px 4px rgba(12, 8, 40, 0.3));
+}
+
+.mobile-key:focus-visible {
+  outline: 2px solid #efe8ff;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+@media (any-pointer: coarse) {
+  #landing-wrap,
+  #game-wrap,
+  #ending-wrap {
+    --stage-ratio: 0.72;
+    --mobile-controls-reserve: clamp(128px, 23vh, 220px);
+    padding-top: clamp(8px, 2vh, 14px);
+    justify-content: flex-start;
+  }
+
+  .mobile-controls {
+    display: flex;
+    margin-top: clamp(10px, 2.2vh, 16px);
+  }
+
+  .hint-btn {
+    right: 12px;
+    bottom: 12px;
+    width: 34px;
+    height: 34px;
+  }
+}
+
+.mobile-controls--static {
+  pointer-events: none;
 }
 
 /* HUD removed for free-play story mode */
@@ -268,8 +383,6 @@ body {
 }
 
 .ending-card--alien {
-  width: min(100vw, 1200px);
-  height: min(100vh, 720px);
   border-radius: 0;
   background: #140f20;
   padding: 0;

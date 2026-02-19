@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 const BASE_URL = process.env.PW_BASE_URL || "http://127.0.0.1:8080";
 
 test("血量 HUD 应可见，第三幕真实碰撞后应扣 1 点血", async ({ page }, testInfo) => {
-  await page.goto(`${BASE_URL}/src/index.html`);
+  await page.goto(`${BASE_URL}/`);
   await page.click("#start-btn");
 
   await page.waitForFunction(() => {

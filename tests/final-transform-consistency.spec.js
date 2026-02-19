@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 const BASE_URL = process.env.PW_BASE_URL || "http://127.0.0.1:8080";
 
 test("final gift transform should stay coffee form during movement and jump cycles", async ({ page }) => {
-  await page.goto(`${BASE_URL}/src/index.html`);
+  await page.goto(`${BASE_URL}/`);
   await page.click("#start-btn");
   await page.waitForFunction(() => {
     const scene = window.__xiaoshouGame?.scene?.getScene("free");
