@@ -15,7 +15,7 @@ The in-game UI text is currently Chinese-only by design, because this gift was m
 - `scripts/`: Helper scripts for asset processing
 - `tests/`: Automated test cases
 
-## How to Use Playwright
+## How I Use Playwright
 This project uses Playwright for end-to-end regression tests, focused on story flow, interaction behavior, and visual consistency:
 - Scene and transition checks: validate character state, landing logic, sprite/frame state, and lane alignment across multi-scene transitions (for example, `tests/scene4-airborne-transition-lane.spec.js` and `tests/scene5-airborne-transition-ground.spec.js`).
 - Core gameplay mechanics: verify health reduction, invulnerability windows, respawn-to-scene-1 behavior, gift interaction, and final transformation consistency (for example, `tests/health-and-respawn.spec.js` and `tests/final-transform-consistency.spec.js`).
