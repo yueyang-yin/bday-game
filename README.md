@@ -6,6 +6,9 @@ Please feel free to play with it on either mobile or PC:  https://bday-game.verc
 
 The project centers on "scenes + character + birthday wishes," featuring page animations, gift presentation, and a pixel-style UI. It is lightweight and ready to enjoy right away.
 
+## Language Note
+The in-game UI text is currently Chinese-only by design, because this gift was made specifically for a Chinese-speaking friend.
+
 ## Project Overview
 - `src/`: Website source code (`index.html`, `styles.css`, `main.js`)
 - `assets/`: Images and visual assets
