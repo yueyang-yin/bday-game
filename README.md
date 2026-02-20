@@ -1,33 +1,36 @@
-# Bday-Game（网页礼物版）
+# A Birthday Web Gift for My Friend 🎂
 
-这是一个纯静态的网页生日礼物呈现页面，包含：场景长廊、角色档案、礼物互动、像素 UI 展示与祝福信。
+This is a small birthday gift I made for a friend: a browsable, interactive static web game. 🎁
 
-## 预览
-推荐本地起一个静态服务器：
+The project centers on "scenes + character + birthday wishes," featuring page animations, gift presentation, and a pixel-style UI. It is lightweight and ready to enjoy right away.
 
-```bash
-python3 -m http.server 8080
-```
+## Project Overview
+- `src/`: Website source code (`index.html`, `styles.css`, `main.js`)
+- `assets/`: Images and visual assets
+- `scripts/`: Helper scripts for asset processing
+- `tests/`: Automated test cases
 
-然后打开：
+## How to Use Playwright
+This project uses Playwright for end-to-end regression tests, focused on story flow, interaction behavior, and visual consistency:
+- Scene and transition checks: validate character state, landing logic, sprite/frame state, and lane alignment across multi-scene transitions (for example, `tests/scene4-airborne-transition-lane.spec.js` and `tests/scene5-airborne-transition-ground.spec.js`).
+- Core gameplay mechanics: verify health reduction, invulnerability windows, respawn-to-scene-1 behavior, gift interaction, and final transformation consistency (for example, `tests/health-and-respawn.spec.js` and `tests/final-transform-consistency.spec.js`).
+- Mobile experience: run mobile viewport + touch interaction tests to verify canvas ratio, safe margins, and virtual control behavior (for example, `tests/mobile-layout-and-controls.spec.js`).
+- Visual debugging support: selected tests save screenshots under `test-results/` for fast diagnosis of sprite/frame/UI issues (for example, `tests/scene6-gift-drop-complete.spec.js`).
 
-```
-http://localhost:8080/
-```
+### Run Playwright Locally
+1. Start a local static server:
+   ```bash
+   python3 -m http.server 8080
+   ```
+2. Run tests in another terminal:
+   ```bash
+   npm test
+   ```
+3. Optionally set a custom base URL:
+   ```bash
+   PW_BASE_URL=http://127.0.0.1:8080 npm test
+   ```
 
-如果直接打开 `index.html`，浏览器可能会限制本地资源加载。
-
-## 目录结构
-- `src/`：网页源代码
-  - `index.html`
-  - `styles.css`
-  - `main.js`
-- `assets/`：最终图像资产（场景/角色/道具/UI）
-- `output/`：图像生成与中间产物（不影响网页运行）
-- `scripts/`：辅助脚本（如裁切/缩放）
-
-## 资产更新
-如需替换资产，保持文件名一致并放回 `assets/` 对应子目录即可。
-
-## 说明
-该页面不依赖任何前端框架或外部库，适合直接部署到任意静态站点。
+## Agent Skills Used
+- `imagegen`: Used to generate or edit art assets through the OpenAI Image API workflow.
+- `vercel-deploy`: Used when publishing the static site to Vercel.

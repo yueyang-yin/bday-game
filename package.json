@@ -1,5 +1,5 @@
 {
-  "name": "bdg-game",
+  "name": "bday-game",
   "version": "1.0.0",
   "description": "这是一个纯静态的网页生日礼物呈现页面，包含：场景长廊、角色档案、礼物互动、像素 UI 展示与祝福信。",
   "main": "index.js",
@@ -8,16 +8,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yueyang-yin/BDG-Game.git"
+    "url": "git+https://github.com/yueyang-yin/bday-game.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/yueyang-yin/BDG-Game/issues"
+    "url": "https://github.com/yueyang-yin/bday-game/issues"
   },
-  "homepage": "https://github.com/yueyang-yin/BDG-Game#readme",
+  "homepage": "https://github.com/yueyang-yin/bday-game#readme",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "playwright": "^1.58.2"

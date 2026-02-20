@@ -11,6 +11,8 @@
   --stage-max-width: 1200px;
   --viewport-padding: clamp(10px, 2.8vw, 24px);
   --mobile-controls-reserve: 0px;
+  --mobile-key-size: clamp(56px, 16.5vw, 84px);
+  --mobile-key-jump-size: clamp(86px, 24vw, 130px);
 }
 
 * {
@@ -267,7 +269,7 @@ body {
   background: transparent;
   padding: 0;
   margin: 0;
-  width: clamp(56px, 16.5vw, 84px);
+  width: var(--mobile-key-size);
   aspect-ratio: 1 / 1;
   cursor: pointer;
   touch-action: manipulation;
@@ -293,7 +295,7 @@ body {
 }
 
 .mobile-key--jump {
-  width: clamp(86px, 24vw, 130px);
+  width: var(--mobile-key-jump-size);
 }
 
 .mobile-key.is-pressed img {
@@ -312,14 +314,22 @@ body {
   #game-wrap,
   #ending-wrap {
     --stage-ratio: 0.72;
-    --mobile-controls-reserve: clamp(128px, 23vh, 220px);
+    --mobile-controls-reserve: clamp(154px, 28vh, 260px);
+    --mobile-key-size: clamp(68px, 19vw, 106px);
+    --mobile-key-jump-size: clamp(106px, 29vw, 164px);
     padding-top: clamp(8px, 2vh, 14px);
     justify-content: flex-start;
   }
 
   .mobile-controls {
     display: flex;
+    width: min(520px, 100%);
+    gap: clamp(22px, 5vw, 34px);
     margin-top: clamp(10px, 2.2vh, 16px);
+  }
+
+  .mobile-controls__move {
+    gap: clamp(16px, 4vw, 26px);
   }
 
   .hint-btn {
@@ -363,7 +373,6 @@ body {
 }
 
 .pause-card,
-.hint-card,
 .ending-card {
   background: var(--panel);
   border-radius: 16px;
@@ -372,6 +381,111 @@ body {
   min-width: 240px;
   border: 4px solid var(--wood);
   box-shadow: 0 10px 0 #3b2616;
+}
+
+.hint {
+  background: rgba(0, 0, 0, 0.64);
+}
+
+.hint-card {
+  width: min(520px, calc(100vw - 32px));
+  background: linear-gradient(180deg, #f7ecd8 0%, #efddbf 100%);
+  border: 4px solid var(--wood);
+  border-radius: 18px;
+  box-shadow: 0 12px 0 #3b2616;
+  padding: clamp(16px, 2.5vw, 24px);
+  text-align: left;
+}
+
+.hint-title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  letter-spacing: 0.03em;
+}
+
+.hint-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  line-height: 1.25;
+}
+
+.hint-label {
+  color: #3f2a19;
+  white-space: nowrap;
+}
+
+.hint-value {
+  color: #2a1c12;
+  font-weight: 600;
+  text-align: right;
+}
+
+.hint-card kbd {
+  display: inline-block;
+  min-width: 1.3em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 2px solid #7c5938;
+  background: #fff4e1;
+  font-family: inherit;
+  font-size: 0.92em;
+  line-height: 1.1;
+  text-align: center;
+  box-shadow: 0 2px 0 rgba(59, 38, 22, 0.5);
+}
+
+.hint-note {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 2px dashed rgba(111, 75, 44, 0.45);
+  font-size: clamp(0.95rem, 1.6vw, 1.08rem);
+  line-height: 1.45;
+  color: #4a321f;
+}
+
+.hint-close-btn {
+  margin: 14px auto 0;
+  display: block;
+  width: min(220px, 100%);
+  padding: 10px 20px;
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+@media (max-width: 768px) {
+  .hint-card {
+    width: min(420px, calc(100vw - 24px));
+    border-width: 3px;
+    box-shadow: 0 8px 0 #3b2616;
+    padding: 14px 14px 16px;
+  }
+
+  .hint-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .hint-value {
+    text-align: left;
+  }
+
+  .hint-close-btn {
+    width: 100%;
+    margin-top: 12px;
+  }
 }
 
 .ending-card p {

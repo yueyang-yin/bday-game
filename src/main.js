@@ -59,6 +59,7 @@
   };
   const sceneKeys = ["bg1", "bg2", "bg3", "bg4", "bg5", "bg6"];
   const FINAL_TRANSFORM_ITALIAN_LINE = "Ballerina Cappuccina";
+  const FINAL_TRANSFORM_AUDIO_URL = "../assets/audio/final-transform-voice.wav";
   const HEALTH_RULES = {
     MAX_HP: 6,
     INVULN_SECONDS: 1.2,
@@ -84,12 +85,91 @@
     spaceQueued: false,
   };
   const activeVirtualPointers = new Map();
+  let finalTransformAudio = null;
+  let finalTransformAudioErrored = false;
+  let finalTransformAudioPrimed = false;
+
+  function getFinalTransformAudio() {
+    if (finalTransformAudio) return finalTransformAudio;
+    if (finalTransformAudioErrored || typeof Audio !== "function") return null;
+    try {
+      finalTransformAudio = new Audio(FINAL_TRANSFORM_AUDIO_URL);
+      finalTransformAudio.preload = "auto";
+      finalTransformAudio.volume = state.volume;
+      finalTransformAudio.addEventListener("error", () => {
+        finalTransformAudioErrored = true;
+      });
+      return finalTransformAudio;
+    } catch (_err) {
+      finalTransformAudioErrored = true;
+      return null;
+    }
+  }
+
+  function stopFinalTransformAudio(reset = false) {
+    if (!finalTransformAudio) return;
+    try {
+      finalTransformAudio.pause();
+      if (reset) finalTransformAudio.currentTime = 0;
+    } catch (_err) {
+      // Ignore runtime audio stop errors and keep gameplay resilient.
+    }
+  }
+
+  async function playFinalTransformAudio() {
+    const audio = getFinalTransformAudio();
+    if (!audio || finalTransformAudioErrored) return false;
+    try {
+      stopFinalTransformAudio(true);
+      audio.muted = false;
+      audio.volume = Math.min(1, Math.max(0, state.volume));
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        await playPromise;
+      }
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function primeFinalTransformAudio() {
+    if (finalTransformAudioPrimed || finalTransformAudioErrored) return;
+    const audio = getFinalTransformAudio();
+    if (!audio) return;
+    try {
+      audio.volume = Math.min(1, Math.max(0, state.volume));
+      audio.muted = true;
+      audio.currentTime = 0;
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.muted = false;
+            finalTransformAudioPrimed = true;
+          })
+          .catch(() => {
+            audio.muted = false;
+          });
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        finalTransformAudioPrimed = true;
+      }
+    } catch (_err) {
+      audio.muted = false;
+    }
+  }
 
   function supportsSpeechSynthesis() {
     return "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   }
 
   function primeSpeechSynthesis() {
+    primeFinalTransformAudio();
     if (!supportsSpeechSynthesis()) return;
     const synth = window.speechSynthesis;
     try {
@@ -310,6 +390,7 @@
   function hideEnding() {
     state.ended = false;
     ending.classList.add("hidden");
+    stopFinalTransformAudio(true);
   }
 
   function showEnding() {
@@ -447,6 +528,17 @@
       }
 
       speakFinalTransformNarration() {
+        playFinalTransformAudio()
+          .then((played) => {
+            if (played) return;
+            this.speakFinalTransformNarrationByTts();
+          })
+          .catch(() => {
+            this.speakFinalTransformNarrationByTts();
+          });
+      }
+
+      speakFinalTransformNarrationByTts() {
         if (!supportsSpeechSynthesis()) {
           return;
         }
@@ -495,6 +587,28 @@
 
       getGroundFrameForCurrentForm() {
         return this.isCoffeeForm ? 5 : 0;
+      }
+
+      getCurrentFormBaseTextureKey() {
+        return this.isCoffeeForm ? "coffee" : "player";
+      }
+
+      getCurrentFormGroundVisibleHeight() {
+        const baseTextureKey = this.getCurrentFormBaseTextureKey();
+        const groundedFrame = this.getGroundFrameForCurrentForm();
+        const visible = this.getVisibleFrameSize(baseTextureKey, groundedFrame);
+        return Math.max(1, visible.height * (this.player?.scaleY || 1));
+      }
+
+      snapPlayerForSceneTransition(entryX = 44) {
+        if (!this.player) return;
+        const baseTextureKey = this.getCurrentFormBaseTextureKey();
+        const groundedFrame = this.getGroundFrameForCurrentForm();
+        this.player.setPosition(entryX, this.groundY);
+        this.player.setVelocity(0, 0);
+        this.player.setTexture(baseTextureKey, groundedFrame);
+        this.applyScaleByVisibleHeight(this.player, baseTextureKey, WORLD_SCALE.PLAYER_TARGET_HEIGHT_PX, groundedFrame);
+        this.configureActorBody(this.player);
       }
 
       preload() {
@@ -1122,6 +1236,8 @@
       enterScene(index) {
         this.enforceSinglePlayer();
         this.clearSceneActors();
+        // Defensive normalization: whichever code path enters a scene, keep player on ground lane baseline.
+        this.snapPlayerForSceneTransition(this.player ? this.player.x : 44);
 
         state.scene = sceneKeys[index];
         this.setBackground(state.scene);
@@ -1154,12 +1270,9 @@
         this.witchLaneY = null;
         this.witchSpawnTimers = [];
 
-        // Align witch visible bottom line to player's ground lane (player.y).
-        const playerLaneY = this.player ? this.player.y : this.groundY;
-        const playerTextureKey = this.player?.texture?.key || "player";
-        const playerFrameName = this.player?.frame?.name ?? 0;
-        const playerVisible = this.getVisibleFrameSize(playerTextureKey, playerFrameName);
-        const targetWitchVisibleHeight = Math.max(1, playerVisible.height * (this.player?.scaleY || 1));
+        // Lock witch lane to ground baseline, regardless of player's airborne transition state.
+        const playerLaneY = this.groundY;
+        const targetWitchVisibleHeight = this.getCurrentFormGroundVisibleHeight();
 
         let spawnX = BASE_WIDTH + 30;
         for (let i = 0; i < COMBAT.WITCH_COUNT; i += 1) {
@@ -1283,7 +1396,8 @@
         const maxSpeed = Math.max(minSpeed + 20, COMBAT.PROJECTILE_SPEED_X_MAX - SCENE4_BALANCE.PROJECTILE_SPEED_REDUCTION_MAX);
         const speed = Phaser.Math.Between(minSpeed, maxSpeed);
         const frame = 1;
-        const y = this.player.y - this.player.displayHeight * 0.5;
+        const playerGroundVisibleHeight = this.getCurrentFormGroundVisibleHeight();
+        const y = this.groundY - playerGroundVisibleHeight * 0.5;
         this.spawnProjectile(
           "obstacles",
           frame,
@@ -1493,9 +1607,9 @@
           }
           if (this.sceneIndex < sceneKeys.length - 1) {
             this.sceneIndex += 1;
+            this.snapPlayerForSceneTransition(44);
             this.enterScene(this.sceneIndex);
-            this.player.setPosition(44, this.groundY);
-            this.player.setVelocity(0, 0);
+            return;
           } else {
             this.player.setX(BASE_WIDTH - 50);
           }

@@ -9,7 +9,7 @@
   <title>你今天变成了老兽</title>
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/ui/favicon-32.png?v=20260219tabicon-restore1" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/ui/apple-touch-icon.png?v=20260219tabicon-restore1" />
-  <link rel="stylesheet" href="./src/styles.css?v=20260219mobilefix5" />
+  <link rel="stylesheet" href="./src/styles.css?v=20260220hintrefresh1" />
 </head>
 <body>
   <div id="app">
@@ -28,15 +28,15 @@
         <div class="mobile-controls mobile-controls--static" aria-hidden="true">
           <div class="mobile-controls__move">
             <button class="mobile-key mobile-key--left" type="button" tabindex="-1">
-              <img src="./assets/ui/mobile-btn-left.png" alt="" draggable="false" />
+              <img src="./assets/ui/mobile-btn-left.png?v=20260220mobilebtn-unify2" alt="" draggable="false" />
+            </button>
+            <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
+              <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
             </button>
             <button class="mobile-key mobile-key--right" type="button" tabindex="-1">
-              <img src="./assets/ui/mobile-btn-right.png" alt="" draggable="false" />
+              <img src="./assets/ui/mobile-btn-right.png?v=20260220mobilebtn-unify2" alt="" draggable="false" />
             </button>
           </div>
-          <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
-            <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
-          </button>
         </div>
       </div>
     </section>
@@ -56,7 +56,16 @@
               aria-label="向左移动"
               type="button"
             >
-              <img src="./assets/ui/mobile-btn-left.png" alt="向左" draggable="false" />
+              <img src="./assets/ui/mobile-btn-left.png?v=20260220mobilebtn-unify2" alt="向左" draggable="false" />
+            </button>
+            <button
+              id="mobile-space-btn"
+              class="mobile-key mobile-key--jump"
+              data-control="space"
+              aria-label="跳跃与交互"
+              type="button"
+            >
+              <img src="./assets/ui/mobile-btn-space.png" alt="跳跃与交互" draggable="false" />
             </button>
             <button
               id="mobile-right-btn"
@@ -65,18 +74,9 @@
               aria-label="向右移动"
               type="button"
             >
-              <img src="./assets/ui/mobile-btn-right.png" alt="向右" draggable="false" />
+              <img src="./assets/ui/mobile-btn-right.png?v=20260220mobilebtn-unify2" alt="向右" draggable="false" />
             </button>
           </div>
-          <button
-            id="mobile-space-btn"
-            class="mobile-key mobile-key--jump"
-            data-control="space"
-            aria-label="跳跃与交互"
-            type="button"
-          >
-            <img src="./assets/ui/mobile-btn-space.png" alt="跳跃与交互" draggable="false" />
-          </button>
         </div>
       </div>
       <div id="pause" class="pause hidden">
@@ -86,13 +86,28 @@
         </div>
       </div>
       <div id="hint" class="hint hidden">
-        <div class="hint-card">
-          <p>移动：左右方向键 / A D</p>
-          <p>跳跃：空格</p>
-          <p>移动端：屏幕下方虚拟按键</p>
-          <p>暂停：ESC</p>
-          <p>最终幕互动：靠近礼物后按空格</p>
-          <button class="btn ghost" id="close-hint">关闭</button>
+        <div class="hint-card" role="dialog" aria-labelledby="hint-title">
+          <h3 id="hint-title" class="hint-title">操作说明</h3>
+          <ul class="hint-list">
+            <li class="hint-item">
+              <span class="hint-label">移动</span>
+              <span class="hint-value"><kbd>←</kbd> <kbd>→</kbd> 或 <kbd>A</kbd> <kbd>D</kbd></span>
+            </li>
+            <li class="hint-item">
+              <span class="hint-label">跳跃/交互</span>
+              <span class="hint-value"><kbd>空格</kbd></span>
+            </li>
+            <li class="hint-item">
+              <span class="hint-label">暂停</span>
+              <span class="hint-value"><kbd>Esc</kbd></span>
+            </li>
+            <li class="hint-item">
+              <span class="hint-label">移动端</span>
+              <span class="hint-value">底部虚拟按键</span>
+            </li>
+          </ul>
+          <p class="hint-note">最终幕靠近礼物后，按 <kbd>空格</kbd> 触发互动。</p>
+          <button class="btn ghost hint-close-btn" id="close-hint">关闭</button>
         </div>
       </div>
       <div id="ending" class="ending hidden">
@@ -110,15 +125,15 @@
           <div class="mobile-controls mobile-controls--static" aria-hidden="true">
             <div class="mobile-controls__move">
               <button class="mobile-key mobile-key--left" type="button" tabindex="-1">
-                <img src="./assets/ui/mobile-btn-left.png" alt="" draggable="false" />
+                <img src="./assets/ui/mobile-btn-left.png?v=20260220mobilebtn-unify2" alt="" draggable="false" />
+              </button>
+              <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
+                <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
               </button>
               <button class="mobile-key mobile-key--right" type="button" tabindex="-1">
-                <img src="./assets/ui/mobile-btn-right.png" alt="" draggable="false" />
+                <img src="./assets/ui/mobile-btn-right.png?v=20260220mobilebtn-unify2" alt="" draggable="false" />
               </button>
             </div>
-            <button class="mobile-key mobile-key--jump" type="button" tabindex="-1">
-              <img src="./assets/ui/mobile-btn-space.png" alt="" draggable="false" />
-            </button>
           </div>
         </div>
       </div>
@@ -127,6 +142,6 @@
 
   <script src="./src/vendor/phaser.min.js?v=20260215hpfix1"></script>
   <script src="./src/constants.js?v=20260215hpfix1"></script>
-  <script src="./src/main.js?v=20260219mobilefix6"></script>
+  <script src="./src/main.js?v=20260220scene5groundfix1"></script>
 </body>
 </html>
