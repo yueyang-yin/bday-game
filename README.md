@@ -1,6 +1,6 @@
-# A Birthday Web Gift for My Friend 🎂
+# A Birthday Web Gift for My Friend 
 
-This is a small birthday gift I made for a friend: a browsable, interactive static web game. 🎁
+This is a small birthday gift I made for a friend: a browsable, interactive static web game. 
 
 Please feel free to play with it on either mobile or PC:  https://bday-game.vercel.app/
 
